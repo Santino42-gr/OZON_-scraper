@@ -1,0 +1,8 @@
+cd "/Users/sasha/Library/Mobile Documents/com~apple~CloudDocs/AIronLab/Cursor/OZON_ scraper
+1 - "When generating code, always reference the markdown documentation inside the `rules/` directory."
+2 - "Use the guidelines in `rules/backend-agent.md` for backend development"
+3 - "Use the guidelines in `rules/frontend-agent.md` for frontend development"
+4 - "Use the guidelines in `rules/design-agent.md` for design development"
+5 - "Use the guidelines in `rules/qa-agent.md` for QA development"
+6 - "Use the guidelines in `rules/devops-agent.md` for devops development"
+7 - "Use the guidelines in `rules/project-manager-agent.md` for managering project"
