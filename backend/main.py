@@ -5,12 +5,41 @@ FastAPI приложение для обработки запросов от Tel
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from loguru import logger
+import sys
 import uvicorn
 
-# Routers будут импортированы позже
-# from routers import articles, users, admin, health
+# Импортируем настройки
+from config import settings
 
+# Импортируем роутеры
+from routers import articles, users, reports, logs, stats
+
+# Импортируем middleware
+from middlewares.logging_middleware import log_requests
+from middlewares.error_handler import (
+    global_exception_handler,
+    validation_exception_handler,
+    http_exception_handler
+)
+
+# Настройка логирования
+logger.remove()
+logger.add(
+    sys.stdout,
+    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>",
+    level=settings.LOG_LEVEL
+)
+logger.add(
+    settings.LOG_FILE,
+    rotation="1 day",
+    retention="7 days",
+    level=settings.LOG_LEVEL
+)
+
+# Создаем приложение FastAPI
 app = FastAPI(
     title="OZON Bot API",
     description="Backend API для OZON Telegram Bot & Admin Panel MVP",
@@ -19,38 +48,92 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS настройки для frontend
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # В production укажите конкретные домены
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Logging middleware
+app.middleware("http")(log_requests)
+
+# Обработчики ошибок
+app.add_exception_handler(Exception, global_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+
+# Подключаем роутеры
+app.include_router(articles.router, prefix="/api/v1/articles", tags=["Articles 📦"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["Users 👥"])
+app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports 📊"])
+app.include_router(logs.router, prefix="/api/v1/logs", tags=["Logs 📝"])
+app.include_router(stats.router, prefix="/api/v1/stats", tags=["Statistics 📈"])
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Действия при запуске приложения"""
+    logger.info("=" * 60)
+    logger.info("🚀 Starting OZON Bot Backend API")
+    logger.info(f"Environment: {settings.ENVIRONMENT}")
+    logger.info(f"API URL: {settings.BACKEND_API_URL}")
+    logger.info(f"CORS Origins: {settings.cors_origins_list}")
+    logger.info("=" * 60)
+    
+    # Проверка подключения к БД
+    from database import check_database_connection
+    if await check_database_connection():
+        logger.success("✅ Database connection successful")
+    else:
+        logger.error("❌ Database connection failed")
+    
+    logger.info("📚 API Documentation available at: /docs")
+    logger.info("🔄 ReDoc available at: /redoc")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Действия при остановке приложения"""
+    logger.info("🛑 Shutting down OZON Bot Backend API...")
+
 
 @app.get("/")
 async def root():
-    """Корневой endpoint"""
+    """
+    Корневой endpoint
+    
+    Возвращает информацию о сервисе
+    """
     return {
         "service": "OZON Bot Backend API",
         "version": "1.0.0",
         "status": "running",
+        "environment": settings.ENVIRONMENT,
         "docs": "/docs",
+        "redoc": "/redoc"
     }
 
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "backend-api"}
-
-
-# Подключение роутеров (будет позже)
-# app.include_router(health.router, prefix="/health", tags=["Health"])
-# app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
-# app.include_router(articles.router, prefix="/api/v1/articles", tags=["Articles"])
-# app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
+    """
+    Health check endpoint
+    
+    Проверяет состояние сервиса и подключения к БД
+    """
+    from database import check_database_connection
+    
+    db_healthy = await check_database_connection()
+    
+    return {
+        "status": "healthy" if db_healthy else "degraded",
+        "service": "backend-api",
+        "database": "connected" if db_healthy else "disconnected",
+        "version": "1.0.0"
+    }
 
 
 if __name__ == "__main__":
@@ -59,6 +142,6 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=True,
-        log_level="info",
+        log_level=settings.LOG_LEVEL.lower(),
     )
 

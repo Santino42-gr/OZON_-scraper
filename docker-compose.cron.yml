@@ -1,0 +1,82 @@
+# ============================================
+# Docker Compose для Cron Jobs
+# ============================================
+# 
+# Отдельный сервис для запуска cron jobs
+# 
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.cron.yml up -d
+#
+# ============================================
+
+version: '3.8'
+
+services:
+  # Cron Worker - запуск периодических задач
+  cron-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ozon-scraper-cron
+    restart: unless-stopped
+    
+    # Переопределяем command для cron режима
+    command: >
+      sh -c "
+        echo 'Installing cron...' &&
+        apk add --no-cache dcron &&
+        echo '0 3 * * * cd /app && python -m cron_jobs.price_history_collector >> /var/log/cron.log 2>&1' > /etc/crontabs/root &&
+        echo '0 4 * * 0 cd /app && python -m cron_jobs.cleanup_old_data >> /var/log/cron.log 2>&1' >> /etc/crontabs/root &&
+        echo 'Cron jobs configured:' &&
+        cat /etc/crontabs/root &&
+        echo 'Starting cron daemon...' &&
+        crond -f -l 2
+      "
+    
+    environment:
+      # Supabase
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      
+      # Cron конфигурация
+      - OZON_SCRAPER_BATCH_SIZE=${OZON_SCRAPER_BATCH_SIZE:-10}
+      - OZON_SCRAPER_DELAY=${OZON_SCRAPER_DELAY:-5}
+      
+      # Playwright
+      - PLAYWRIGHT_HEADLESS=${PLAYWRIGHT_HEADLESS:-true}
+      - PLAYWRIGHT_TIMEOUT=${PLAYWRIGHT_TIMEOUT:-30000}
+      
+      # Rate limiting
+      - OZON_RATE_LIMIT=${OZON_RATE_LIMIT:-10}
+      - OZON_TIMEOUT=${OZON_TIMEOUT:-30}
+      - OZON_CACHE_TTL=${OZON_CACHE_TTL:-3600}
+    
+    volumes:
+      - ./backend:/app
+      - cron-logs:/var/log
+    
+    networks:
+      - ozon-scraper-network
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "ps", "aux", "|", "grep", "crond"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  cron-logs:
+    driver: local
+
+networks:
+  ozon-scraper-network:
+    driver: bridge
+
