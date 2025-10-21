@@ -130,6 +130,21 @@ export const mockCrudService = {
     articlesData = articlesData.filter(a => a.id !== id);
   },
 
+  async getArticleById(id: string): Promise<Article | null> {
+    await delay(300);
+    return articlesData.find(a => a.id === id) || null;
+  },
+
+  async updateArticle(id: string, data: Partial<Article>): Promise<Article> {
+    await delay(300);
+    const article = articlesData.find(a => a.id === id);
+    if (article) {
+      Object.assign(article, data);
+      article.updatedAt = new Date().toISOString();
+    }
+    return article!;
+  },
+
   async updateArticleStatus(id: string, status: Article['status']): Promise<Article> {
     await delay(300);
     const article = articlesData.find(a => a.id === id);
@@ -138,6 +153,47 @@ export const mockCrudService = {
       article.updatedAt = new Date().toISOString();
     }
     return article!;
+  },
+
+  async deleteMultipleArticles(ids: string[]): Promise<void> {
+    await delay(500);
+    articlesData = articlesData.filter(a => !ids.includes(a.id));
+  },
+
+  async exportArticles(filters: {
+    search?: string;
+    status?: string;
+    userId?: string;
+  }): Promise<string> {
+    await delay(300);
+    let filtered = [...articlesData];
+
+    if (filters.search) {
+      filtered = filtered.filter(a => 
+        a.articleNumber.toLowerCase().includes(filters.search!.toLowerCase())
+      );
+    }
+
+    if (filters.status && filters.status !== 'all') {
+      filtered = filtered.filter(a => a.status === filters.status);
+    }
+
+    if (filters.userId) {
+      filtered = filtered.filter(a => a.userId === filters.userId);
+    }
+
+    // Generate CSV
+    const headers = ['Артикул', 'Пользователь', 'Дата создания', 'Последняя проверка', 'Статус'];
+    const rows = filtered.map(a => [
+      a.articleNumber,
+      a.userName,
+      new Date(a.createdAt).toLocaleDateString('ru-RU'),
+      a.lastCheck ? new Date(a.lastCheck).toLocaleDateString('ru-RU') : 'Никогда',
+      a.status,
+    ]);
+
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    return csv;
   },
 
   // Users
@@ -170,6 +226,11 @@ export const mockCrudService = {
     };
   },
 
+  async getUserById(id: string): Promise<User | null> {
+    await delay(300);
+    return usersData.find(u => u.id === id) || null;
+  },
+
   async toggleUserBlock(id: string): Promise<User> {
     await delay(300);
     const user = usersData.find(u => u.id === id);
@@ -177,6 +238,11 @@ export const mockCrudService = {
       user.isBlocked = !user.isBlocked;
     }
     return user!;
+  },
+
+  async getUserArticles(userId: string): Promise<Article[]> {
+    await delay(400);
+    return articlesData.filter(a => a.userId === userId);
   },
 
   // Logs
@@ -211,6 +277,11 @@ export const mockCrudService = {
       pageSize: params.pageSize,
       totalPages: Math.ceil(filtered.length / params.pageSize),
     };
+  },
+
+  async getLogById(id: string): Promise<Log | null> {
+    await delay(300);
+    return logsData.find(l => l.id === id) || null;
   },
 };
 

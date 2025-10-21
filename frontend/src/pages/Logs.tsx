@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Table,
@@ -14,22 +14,40 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { mockCrudService } from '@/services/mockCrudService';
-import { Search, ChevronLeft, ChevronRight, XCircle, AlertTriangle, Info } from 'lucide-react';
+import { Log } from '@/types/crud';
+import { Search, ChevronLeft, ChevronRight, XCircle, AlertTriangle, Info, Eye } from 'lucide-react';
 
 export default function Logs() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState('all');
+  const [selectedLog, setSelectedLog] = useState<Log | null>(null);
+
+  // Debounced search
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    const timer = setTimeout(() => setDebouncedSearch(value), 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['logs', { page, pageSize, search, levelFilter }],
+    queryKey: ['logs', { page, pageSize, search: debouncedSearch, levelFilter }],
     queryFn: () => mockCrudService.getLogs({
       page,
       pageSize,
       level: levelFilter,
-      search,
+      search: debouncedSearch,
     }),
   });
 
@@ -95,7 +113,7 @@ export default function Logs() {
           <Input
             placeholder="Поиск в логах..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-8"
           />
         </div>
@@ -109,6 +127,7 @@ export default function Logs() {
               <TableHead className="w-[100px]">Уровень</TableHead>
               <TableHead>Сообщение</TableHead>
               <TableHead className="w-[150px]">Пользователь</TableHead>
+              <TableHead className="w-[80px]">Детали</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -138,6 +157,15 @@ export default function Logs() {
                   ) : (
                     <span className="text-muted-foreground text-sm">Система</span>
                   )}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedLog(log)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -176,7 +204,65 @@ export default function Logs() {
           </div>
         </div>
       )}
+
+      {/* Log Details Dialog */}
+      <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Badge variant={selectedLog ? getLevelBadge(selectedLog.level) : 'default'}>
+                {selectedLog && getLevelLabel(selectedLog.level)}
+              </Badge>
+              {selectedLog?.eventType}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedLog && new Date(selectedLog.timestamp).toLocaleString('ru-RU')}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedLog && (
+            <div className="space-y-4">
+              <div>
+                <Label>Сообщение</Label>
+                <p className="mt-1 text-sm">{selectedLog.message}</p>
+              </div>
+
+              {selectedLog.userName && (
+                <div>
+                  <Label>Пользователь</Label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <Avatar>
+                      <AvatarFallback>{selectedLog.userInitials}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{selectedLog.userName}</p>
+                      {selectedLog.userId && (
+                        <p className="text-sm text-muted-foreground">ID: {selectedLog.userId}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedLog.articleId && (
+                <div>
+                  <Label>Артикул</Label>
+                  <p className="mt-1 font-mono">{selectedLog.articleId}</p>
+                </div>
+              )}
+
+              {selectedLog.metadata && (
+                <div>
+                  <Label>Метаданные</Label>
+                  <pre className="mt-1 bg-muted p-4 rounded-md text-xs overflow-x-auto">
+                    {JSON.stringify(selectedLog.metadata, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

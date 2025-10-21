@@ -390,25 +390,173 @@ class OzonScraper:
         try:
             soup = BeautifulSoup(html, 'html.parser')
             
-            # TODO: Реализовать реальный парсинг
-            # Селекторы нужно проверить на актуальной странице OZON
+            # Ищем первый результат поиска (обычно это наш товар)
+            search_results = soup.find_all('div', {'data-widget': 'searchResultsV2'})
+            if not search_results:
+                logger.warning(f"⚠️  No search results found for {article}")
+                return None
             
-            logger.warning(f"⚠️  HTML parsing not fully implemented for {article}")
+            # Ищем карточку товара
+            product_card = search_results[0].find('div', recursive=True)
+            if not product_card:
+                logger.warning(f"⚠️  No product card found for {article}")
+                return None
             
-            # Пока возвращаем заглушку
+            # === Парсинг названия товара ===
+            name = None
+            name_elem = soup.find('span', class_=lambda x: x and 'tsBody500Medium' in x)
+            if name_elem:
+                name = name_elem.get_text(strip=True)
+            
+            # === Парсинг цен ===
+            # 1. Обычная цена (без Ozon Card) - черный текст
+            normal_price = None
+            normal_price_elem = soup.find('span', {'data-widget': 'webPrice'})
+            if not normal_price_elem:
+                # Альтернативный селектор
+                normal_price_elem = soup.find('span', class_=lambda x: x and 'tsHeadline500Medium' in x)
+            
+            if normal_price_elem:
+                price_text = normal_price_elem.get_text(strip=True)
+                normal_price = self._parse_price_text(price_text)
+            
+            # 2. Цена с Ozon Card - фиолетовый текст
+            ozon_card_price = None
+            ozon_card_elem = soup.find('span', {'data-widget': 'webOzonCardPrice'})
+            if not ozon_card_elem:
+                # Альтернативный селектор
+                ozon_card_elem = soup.find('span', class_=lambda x: x and 'ozonCard' in str(x).lower())
+            
+            if ozon_card_elem:
+                price_text = ozon_card_elem.get_text(strip=True)
+                ozon_card_price = self._parse_price_text(price_text)
+            
+            # 3. Старая цена (перечеркнутая)
+            old_price = None
+            old_price_elem = soup.find('span', class_=lambda x: x and 'line-through' in str(x))
+            if not old_price_elem:
+                old_price_elem = soup.find('s')
+            
+            if old_price_elem:
+                price_text = old_price_elem.get_text(strip=True)
+                old_price = self._parse_price_text(price_text)
+            
+            # Определяем основную цену
+            price = ozon_card_price or normal_price
+            
+            # === Парсинг рейтинга ===
+            rating = None
+            rating_elem = soup.find('span', class_=lambda x: x and 'rating' in str(x).lower())
+            if rating_elem:
+                rating_text = rating_elem.get_text(strip=True)
+                try:
+                    rating = float(rating_text.replace(',', '.'))
+                except:
+                    pass
+            
+            # === Парсинг количества отзывов ===
+            reviews_count = None
+            reviews_elem = soup.find('span', string=lambda x: x and 'отзыв' in str(x).lower())
+            if reviews_elem:
+                reviews_text = reviews_elem.get_text(strip=True)
+                try:
+                    # Извлекаем число из текста типа "123 отзыва"
+                    import re
+                    match = re.search(r'\d+', reviews_text)
+                    if match:
+                        reviews_count = int(match.group())
+                except:
+                    pass
+            
+            # === Парсинг URL товара ===
+            product_url = None
+            link_elem = soup.find('a', href=lambda x: x and '/product/' in str(x))
+            if link_elem:
+                href = link_elem.get('href')
+                if href.startswith('http'):
+                    product_url = href
+                elif href.startswith('/'):
+                    product_url = f"{self.base_url}{href}"
+            
+            # === Парсинг изображения ===
+            image_url = None
+            img_elem = soup.find('img', src=lambda x: x and 'cdn' in str(x).lower())
+            if img_elem:
+                image_url = img_elem.get('src')
+            
+            # === Парсинг наличия ===
+            availability = ProductAvailability.AVAILABLE
+            if soup.find(string=lambda x: x and 'нет в наличии' in str(x).lower()):
+                availability = ProductAvailability.OUT_OF_STOCK
+            elif soup.find(string=lambda x: x and 'под заказ' in str(x).lower()):
+                availability = ProductAvailability.PRE_ORDER
+            
+            # Если не нашли ни одну цену - товар не найден
+            if not price and not normal_price:
+                logger.warning(f"⚠️  No prices found for {article}")
+                return None
+            
+            # Формируем результат
             product = ProductInfo(
                 article=article,
-                name=f"Product {article} (parsed from HTML)",
-                price=1999.0,
-                availability=ProductAvailability.UNKNOWN,
-                source=ScrapingSource.HTTPX,
-                url=self._construct_product_url(article)
+                name=name or f"Product {article}",
+                price=price,
+                normal_price=normal_price,
+                ozon_card_price=ozon_card_price,
+                old_price=old_price,
+                rating=rating,
+                reviews_count=reviews_count,
+                availability=availability,
+                image_url=image_url,
+                url=product_url or self._construct_product_url(article),
+                source=ScrapingSource.HTTPX
+            )
+            
+            logger.info(
+                f"✅ Parsed {article}: "
+                f"normal_price={normal_price}, "
+                f"ozon_card_price={ozon_card_price}, "
+                f"name={name}"
             )
             
             return product
             
         except Exception as e:
             logger.error(f"❌ Error parsing HTML for {article}: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
+            return None
+    
+    def _parse_price_text(self, price_text: str) -> Optional[float]:
+        """
+        Парсинг цены из текста
+        
+        Args:
+            price_text: Текст с ценой (например, "1 999 ₽", "1999", "1,999.00")
+            
+        Returns:
+            Цена как float или None
+        """
+        try:
+            # Убираем все кроме цифр, точек и запятых
+            import re
+            cleaned = re.sub(r'[^\d,.]', '', price_text)
+            
+            # Заменяем запятую на точку
+            cleaned = cleaned.replace(',', '.')
+            
+            # Если несколько точек, оставляем только последнюю (десятичный разделитель)
+            parts = cleaned.split('.')
+            if len(parts) > 2:
+                cleaned = ''.join(parts[:-1]) + '.' + parts[-1]
+            
+            # Конвертируем в float
+            price = float(cleaned)
+            
+            return price if price > 0 else None
+            
+        except Exception as e:
+            logger.debug(f"Failed to parse price from '{price_text}': {e}")
             return None
     
     # ==================== Scraping Methods ====================

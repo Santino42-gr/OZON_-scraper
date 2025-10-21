@@ -15,7 +15,7 @@ import uvicorn
 from config import settings
 
 # Импортируем роутеры
-from routers import articles, users, reports, logs, stats
+from routers import articles, users, reports, logs, stats, prices
 
 # Импортируем middleware
 from middlewares.logging_middleware import log_requests
@@ -67,6 +67,7 @@ app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 
 # Подключаем роутеры
 app.include_router(articles.router, prefix="/api/v1/articles", tags=["Articles 📦"])
+app.include_router(prices.router, prefix="/api/v1/articles", tags=["Prices 💰"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users 👥"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports 📊"])
 app.include_router(logs.router, prefix="/api/v1/logs", tags=["Logs 📝"])

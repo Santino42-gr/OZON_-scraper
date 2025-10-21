@@ -38,6 +38,7 @@ class ArticleUpdate(BaseModel):
     normal_price: Optional[float] = None
     ozon_card_price: Optional[float] = None
     average_price_7days: Optional[float] = None
+    price_updated_at: Optional[datetime] = None
     rating: Optional[float] = None
     reviews_count: Optional[int] = None
     available: Optional[bool] = None
@@ -52,6 +53,7 @@ class ArticleResponse(ArticleBase):
     created_at: datetime = Field(..., description="Дата добавления")
     updated_at: datetime = Field(..., description="Дата последнего обновления")
     last_check: Optional[datetime] = Field(None, description="Дата последней проверки")
+    price_updated_at: Optional[datetime] = Field(None, description="Дата последнего обновления цен")
     status: str = Field("active", description="Статус артикула (active/archived/error)")
     
     class Config:

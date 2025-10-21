@@ -59,13 +59,16 @@ async def create_article(article: ArticleCreate):
             "name": product_info.name,
             "price": product_info.price,
             "old_price": product_info.old_price,
+            "normal_price": product_info.normal_price,
+            "ozon_card_price": product_info.ozon_card_price,
             "rating": product_info.rating,
             "reviews_count": product_info.reviews_count,
             "available": product_info.available,
             "image_url": product_info.image_url,
             "product_url": product_info.url,
             "status": "active",
-            "last_check": datetime.now().isoformat()
+            "last_check": datetime.now().isoformat(),
+            "price_updated_at": datetime.now().isoformat()
         }
         
         result = supabase.table("articles").insert(data).execute()
