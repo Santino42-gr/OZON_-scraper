@@ -249,6 +249,9 @@ export default function Articles() {
               <TableHead>Пользователь</TableHead>
               <TableHead>Дата добавления</TableHead>
               <TableHead>Последняя проверка</TableHead>
+              <TableHead className="text-center">СПП1</TableHead>
+              <TableHead className="text-center">СПП2</TableHead>
+              <TableHead className="text-center">СПП Общ</TableHead>
               <TableHead>Статус</TableHead>
               <TableHead className="w-[70px]">Действия</TableHead>
             </TableRow>
@@ -288,6 +291,21 @@ export default function Articles() {
                         addSuffix: true,
                       })
                     : 'Никогда'}
+                </TableCell>
+                <TableCell className="text-center">
+                  {article.spp1 !== null && article.spp1 !== undefined
+                    ? `${article.spp1.toFixed(1)}%`
+                    : 'Н/Д'}
+                </TableCell>
+                <TableCell className="text-center">
+                  {article.spp2 !== null && article.spp2 !== undefined
+                    ? `${article.spp2.toFixed(1)}%`
+                    : 'Н/Д'}
+                </TableCell>
+                <TableCell className="text-center">
+                  {article.spp_total !== null && article.spp_total !== undefined
+                    ? `${article.spp_total.toFixed(1)}%`
+                    : 'Н/Д'}
                 </TableCell>
                 <TableCell>
                   <Badge variant={getStatusBadge(article.status)}>
@@ -394,8 +412,44 @@ export default function Articles() {
                 </div>
               </div>
               
+              {/* СПП показатели */}
+              {(viewArticle.spp1 !== null || viewArticle.spp2 !== null || viewArticle.spp_total !== null) && (
+                <div className="border-t pt-4">
+                  <Label className="text-base">📊 Показатели скидки (СПП)</Label>
+                  <div className="grid grid-cols-3 gap-4 mt-3">
+                    <div className="bg-muted p-3 rounded-md">
+                      <p className="text-xs text-muted-foreground mb-1">СПП1</p>
+                      <p className="text-lg font-semibold">
+                        {viewArticle.spp1 !== null && viewArticle.spp1 !== undefined
+                          ? `${viewArticle.spp1.toFixed(1)}%`
+                          : 'Н/Д'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Средняя → Обычная</p>
+                    </div>
+                    <div className="bg-muted p-3 rounded-md">
+                      <p className="text-xs text-muted-foreground mb-1">СПП2</p>
+                      <p className="text-lg font-semibold">
+                        {viewArticle.spp2 !== null && viewArticle.spp2 !== undefined
+                          ? `${viewArticle.spp2.toFixed(1)}%`
+                          : 'Н/Д'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Ozon Card скидка</p>
+                    </div>
+                    <div className="bg-muted p-3 rounded-md">
+                      <p className="text-xs text-muted-foreground mb-1">СПП Общий</p>
+                      <p className="text-lg font-semibold">
+                        {viewArticle.spp_total !== null && viewArticle.spp_total !== undefined
+                          ? `${viewArticle.spp_total.toFixed(1)}%`
+                          : 'Н/Д'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Общая скидка</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {viewArticle.lastCheckData && (
-                <div>
+                <div className="border-t pt-4">
                   <Label>Последние данные OZON</Label>
                   <pre className="mt-2 text-xs bg-muted p-4 rounded-md overflow-x-auto">
                     {JSON.stringify(viewArticle.lastCheckData, null, 2)}

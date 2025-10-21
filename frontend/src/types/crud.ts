@@ -12,6 +12,9 @@ export interface Article {
   status: 'active' | 'inactive' | 'error';
   isProblematic: boolean;
   lastCheckData: Record<string, unknown> | null;
+  spp1?: number | null;
+  spp2?: number | null;
+  spp_total?: number | null;
 }
 
 export interface User {

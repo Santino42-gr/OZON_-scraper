@@ -69,6 +69,29 @@ def format_article_info(article: Dict[str, Any]) -> str:
             if ozon_card_price:
                 text += f"<b>🎴 С Ozon Card:</b> {ozon_card_price} ₽\n"
             
+            # СПП показатели
+            spp1 = last_check.get("spp1")
+            spp2 = last_check.get("spp2")
+            spp_total = last_check.get("spp_total")
+            
+            if any([spp1 is not None, spp2 is not None, spp_total is not None]):
+                text += "\n<b>📊 Показатели скидки:</b>\n"
+                
+                if spp1 is not None:
+                    text += f"  • СПП1: {spp1:.1f}%\n"
+                else:
+                    text += f"  • СПП1: Н/Д\n"
+                
+                if spp2 is not None:
+                    text += f"  • СПП2: {spp2:.1f}%\n"
+                else:
+                    text += f"  • СПП2: Н/Д\n"
+                
+                if spp_total is not None:
+                    text += f"  • СПП Общий: {spp_total:.1f}%\n"
+                else:
+                    text += f"  • СПП Общий: Н/Д\n"
+            
             # Название товара
             name = last_check.get("name")
             if name:
@@ -231,7 +254,30 @@ def format_report(report: Dict[str, Any]) -> str:
             text += f"  • С картой: {avg_card} ₽\n"
         
         data_points = avg_price_7d.get("data_points", 0)
-        text += f"  • Точек данных: {data_points}\n"
+        text += f"  • Точек данных: {data_points}\n\n"
+    
+    # СПП показатели
+    spp1 = report.get("spp1")
+    spp2 = report.get("spp2")
+    spp_total = report.get("spp_total")
+    
+    if any([spp1 is not None, spp2 is not None, spp_total is not None]):
+        text += f"<b>📊 Показатели скидки:</b>\n"
+        
+        if spp1 is not None:
+            text += f"  • СПП1: {spp1:.1f}%\n"
+        else:
+            text += f"  • СПП1: Н/Д\n"
+        
+        if spp2 is not None:
+            text += f"  • СПП2: {spp2:.1f}%\n"
+        else:
+            text += f"  • СПП2: Н/Д\n"
+        
+        if spp_total is not None:
+            text += f"  • СПП Общий: {spp_total:.1f}%\n"
+        else:
+            text += f"  • СПП Общий: Н/Д\n"
     
     return text
 

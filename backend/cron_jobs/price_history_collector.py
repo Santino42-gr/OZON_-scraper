@@ -122,6 +122,13 @@ class PriceHistoryCollector:
                 logger.warning(f"No data found for article: {article}")
                 return None
             
+            # Рассчитываем СПП метрики
+            spp_metrics = OzonScraper.calculate_spp_metrics(
+                product_info.get("average_price_7days"),
+                product_info.get("normal_price"),
+                product_info.get("ozon_card_price")
+            )
+            
             # Формируем данные для записи в БД
             price_data = {
                 "article_number": article,
@@ -129,6 +136,9 @@ class PriceHistoryCollector:
                 "normal_price": product_info.get("normal_price"),
                 "ozon_card_price": product_info.get("ozon_card_price"),
                 "old_price": product_info.get("old_price"),
+                "spp1": spp_metrics["spp1"],
+                "spp2": spp_metrics["spp2"],
+                "spp_total": spp_metrics["spp_total"],
                 "product_available": product_info.get("available", True),
                 "rating": product_info.get("rating"),
                 "reviews_count": product_info.get("reviews_count"),
@@ -138,7 +148,10 @@ class PriceHistoryCollector:
                 "price_date": datetime.now().isoformat()
             }
             
-            logger.info(f"✅ Successfully scraped {article}: price={price_data['price']}")
+            logger.info(
+                f"✅ Successfully scraped {article}: price={price_data['price']}, "
+                f"spp_total={spp_metrics['spp_total']}"
+            )
             return price_data
             
         except Exception as e:

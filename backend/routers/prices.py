@@ -391,6 +391,12 @@ async def refresh_article_prices(article_id: str):
             {"p_article_number": article_number}
         ).execute()
         
+        # Пересчитываем СПП метрики
+        supabase.rpc(
+            "update_article_spp_metrics",
+            {"p_article_number": article_number}
+        ).execute()
+        
         # Получаем обновленные данные
         updated_response = supabase.table("ozon_scraper_articles") \
             .select("*") \
@@ -416,6 +422,57 @@ async def refresh_article_prices(article_id: str):
         raise
     except Exception as e:
         logger.error(f"Ошибка при обновлении цен для {article_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка сервера: {str(e)}"
+        )
+
+
+@router.get("/{article_id}/spp")
+async def get_article_spp_metrics(article_id: str):
+    """
+    Получить показатели СПП (скидки) для артикула
+    
+    Возвращает:
+    - СПП1: Скидка от средней цены за 7 дней до обычной цены
+    - СПП2: Скидка Ozon Card (от обычной до цены с картой)
+    - СПП Общий: Общая скидка (от средней за 7 дней до цены с картой)
+    
+    Args:
+        article_id: UUID артикула
+        
+    Returns:
+        SPPMetrics с показателями скидки
+    """
+    try:
+        from models.ozon_models import SPPMetrics
+        
+        supabase = get_supabase_client()
+        
+        # Получаем артикул из БД
+        response = supabase.table("ozon_scraper_articles") \
+            .select("spp1, spp2, spp_total") \
+            .eq("id", article_id) \
+            .execute()
+        
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Артикул не найден"
+            )
+        
+        data = response.data[0]
+        
+        return SPPMetrics(
+            spp1=data.get("spp1"),
+            spp2=data.get("spp2"),
+            spp_total=data.get("spp_total")
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка при получении СПП для {article_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка сервера: {str(e)}"
@@ -451,6 +508,41 @@ async def update_all_average_prices():
         
     except Exception as e:
         logger.error(f"Ошибка при массовом обновлении средних цен: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка сервера: {str(e)}"
+        )
+
+
+@router.post("/update-all-spp")
+async def update_all_spp_metrics():
+    """
+    Обновить показатели СПП для всех активных артикулов
+    
+    Пересчитывает СПП1, СПП2 и СПП Общий для всех активных товаров.
+    Требует прав администратора.
+    
+    Returns:
+        Количество обновленных артикулов
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        # Вызываем SQL функцию для обновления всех СПП
+        result = supabase.rpc("update_all_spp_metrics", {}).execute()
+        
+        updated_count = result.data if result.data else 0
+        
+        logger.info(f"Обновлены показатели СПП для {updated_count} артикулов")
+        
+        return {
+            "success": True,
+            "updated_count": updated_count,
+            "message": f"Показатели СПП обновлены для {updated_count} артикулов"
+        }
+        
+    except Exception as e:
+        logger.error(f"Ошибка при массовом обновлении СПП: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка сервера: {str(e)}"

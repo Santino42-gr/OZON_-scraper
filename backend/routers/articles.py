@@ -52,6 +52,14 @@ async def create_article(article: ArticleCreate):
                 detail="Товар не найден в OZON"
             )
         
+        # Рассчитываем СПП метрики
+        from services.ozon_scraper import OzonScraper
+        spp_metrics = OzonScraper.calculate_spp_metrics(
+            product_info.average_price_7days,
+            product_info.normal_price,
+            product_info.ozon_card_price
+        )
+        
         # Сохраняем в БД
         data = {
             "article_number": article.article_number,
@@ -61,6 +69,10 @@ async def create_article(article: ArticleCreate):
             "old_price": product_info.old_price,
             "normal_price": product_info.normal_price,
             "ozon_card_price": product_info.ozon_card_price,
+            "average_price_7days": product_info.average_price_7days,
+            "spp1": spp_metrics["spp1"],
+            "spp2": spp_metrics["spp2"],
+            "spp_total": spp_metrics["spp_total"],
             "rating": product_info.rating,
             "reviews_count": product_info.reviews_count,
             "available": product_info.available,
