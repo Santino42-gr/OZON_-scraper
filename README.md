@@ -156,13 +156,19 @@ docker-compose up -d
 
 ## 📚 Документация
 
+### Основная документация
 - [Настройка Supabase](docs/supabase-setup.md)
 - [Схема базы данных](docs/DATABASE.md)
-- [Показатели СПП](docs/SPP_METRICS.md) ⭐ Новое!
+- [Показатели СПП](docs/SPP_METRICS.md) ⭐
 - [Backend API](backend/README.md)
 - [Telegram Bot](bot/README.md)
 - [Frontend](frontend/README.md)
 - [Миграции](docs/migrations/)
+
+### Deployment 🚀
+- [VPS Deployment Guide](docs/VPS_DEPLOYMENT.md) - Полная инструкция
+- [Quick Deploy Guide](docs/QUICK_DEPLOY.md) - Краткий гайд
+- [Phase 6 Summary](docs/PHASE_6_SUMMARY.md) - Итоги контейнеризации
 
 ## 🤖 Команды Telegram бота
 
@@ -218,25 +224,84 @@ npm test
 
 ## 🚢 Деплой
 
-См. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) для инструкций по деплою в production.
+### Quick Start (Docker)
+```bash
+# 1. Создайте .env файл
+cp .env.production.example .env
+# Отредактируйте .env с вашими credentials
 
-Рекомендуемые платформы:
-- Backend: Railway / Render / DigitalOcean
-- Frontend: Vercel / Netlify
-- Database: Supabase (managed)
+# 2. Запустите автоматический деплой
+./deploy.sh
+```
+
+### Подробная документация
+- 📘 [VPS Deployment Guide](docs/VPS_DEPLOYMENT.md) - Полная инструкция по деплою на VPS
+- 🚀 [Quick Deploy Guide](docs/QUICK_DEPLOY.md) - Краткая инструкция для опытных пользователей
+- 📋 [Phase 6 Summary](docs/PHASE_6_SUMMARY.md) - Детали Docker контейнеризации
+
+### Что включено
+- ✅ Docker контейнеризация (Backend, Bot, Frontend)
+- ✅ Docker Compose для production
+- ✅ Nginx reverse proxy и SPA routing
+- ✅ Health checks для всех сервисов
+- ✅ Автоматический скрипт деплоя (`deploy.sh`)
+- ✅ SSL/HTTPS поддержка (Let's Encrypt)
+- ✅ Logging с ротацией
+- ✅ Firewall конфигурация
+
+### Минимальные требования VPS
+- 2GB RAM
+- 20GB Disk Space
+- Ubuntu 20.04+ или Debian 11+
+- Docker 20.10+
+- Docker Compose 2.0+
+
+### Архитектура
+```
+Frontend (Nginx) :80, :443
+        ↓ proxy /api/
+Backend (FastAPI) :8000 ←─── Telegram Bot
+        ↓
+Supabase PostgreSQL
+```
 
 ## 📈 Roadmap
 
+### Phase 1-2: Основа (✅ Завершено)
 - [x] Настройка Supabase и схемы БД
 - [x] Структура монорепозитория
-- [ ] Backend API базовая структура
-- [ ] Интеграция с OZON API
-- [ ] Telegram Bot обработчики
-- [ ] Frontend админ-панель
-- [ ] Тестирование
-- [ ] Документация
-- [ ] CI/CD
-- [ ] Production деплой
+- [x] Backend API базовая структура
+- [x] Интеграция с OZON API
+- [x] Telegram Bot обработчики
+
+### Phase 3-4: Frontend & Features (✅ Завершено)
+- [x] Frontend админ-панель (React + Vite + TypeScript)
+- [x] Dashboard с аналитикой
+- [x] CRUD для пользователей, артикулов, логов
+- [x] Показатели СПП (скидки)
+- [x] Интеграция Frontend с Backend API
+
+### Phase 5: Testing & Documentation (✅ Завершено)
+- [x] Документация проекта
+- [x] Документация API (Swagger/ReDoc)
+- [x] Руководство по настройке Supabase
+- [x] Документация СПП метрик
+
+### Phase 6: Deployment (✅ Завершено)
+- [x] Docker контейнеризация
+- [x] Docker Compose для production
+- [x] VPS deployment инструкции
+- [x] Автоматический скрипт деплоя
+- [x] SSL/HTTPS настройка
+
+### Future Enhancements (📋 Планируется)
+- [ ] Автоматические уведомления о снижении цен
+- [ ] Расширенная аналитика и графики
+- [ ] Экспорт отчетов (PDF, Excel)
+- [ ] CI/CD pipeline (GitHub Actions)
+- [ ] Мониторинг и alerting (Prometheus/Grafana)
+- [ ] Mobile приложение
+- [ ] Multi-tenant поддержка
 
 ## 🤝 Contributing
 

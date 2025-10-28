@@ -33,7 +33,7 @@ async def create_user(user: UserCreate):
         supabase = get_supabase_client()
         
         # Проверяем, не зарегистрирован ли уже пользователь
-        existing = supabase.table("users").select("*").eq(
+        existing = supabase.table("ozon_scraper_users").select("*").eq(
             "telegram_id", user.telegram_id
         ).execute()
         
@@ -54,7 +54,7 @@ async def create_user(user: UserCreate):
             "last_active": datetime.now().isoformat()
         }
         
-        result = supabase.table("users").insert(data).execute()
+        result = supabase.table("ozon_scraper_users").insert(data).execute()
         
         if not result.data:
             raise HTTPException(
@@ -84,7 +84,7 @@ async def get_user(user_id: str):
     """
     try:
         supabase = get_supabase_client()
-        result = supabase.table("users").select("*").eq("id", user_id).execute()
+        result = supabase.table("ozon_scraper_users").select("*").eq("id", user_id).execute()
         
         if not result.data:
             raise HTTPException(
@@ -113,7 +113,7 @@ async def get_user_by_telegram_id(telegram_id: int):
     """
     try:
         supabase = get_supabase_client()
-        result = supabase.table("users").select("*").eq("telegram_id", telegram_id).execute()
+        result = supabase.table("ozon_scraper_users").select("*").eq("telegram_id", telegram_id).execute()
         
         if not result.data:
             raise HTTPException(
@@ -149,7 +149,7 @@ async def list_users(
     try:
         supabase = get_supabase_client()
         
-        query = supabase.table("users").select("*")
+        query = supabase.table("ozon_scraper_users").select("*")
         
         if is_blocked is not None:
             query = query.eq("is_blocked", is_blocked)
@@ -177,7 +177,7 @@ async def update_user(user_id: str, user_update: UserUpdate):
         supabase = get_supabase_client()
         
         # Проверяем существование
-        existing = supabase.table("users").select("*").eq("id", user_id).execute()
+        existing = supabase.table("ozon_scraper_users").select("*").eq("id", user_id).execute()
         if not existing.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -194,7 +194,7 @@ async def update_user(user_id: str, user_update: UserUpdate):
         
         update_data["updated_at"] = datetime.now().isoformat()
         
-        result = supabase.table("users").update(update_data).eq("id", user_id).execute()
+        result = supabase.table("ozon_scraper_users").update(update_data).eq("id", user_id).execute()
         
         if not result.data:
             raise HTTPException(
@@ -225,7 +225,7 @@ async def block_user(user_id: str):
     try:
         supabase = get_supabase_client()
         
-        result = supabase.table("users").update({
+        result = supabase.table("ozon_scraper_users").update({
             "is_blocked": True,
             "updated_at": datetime.now().isoformat()
         }).eq("id", user_id).execute()
@@ -259,7 +259,7 @@ async def unblock_user(user_id: str):
     try:
         supabase = get_supabase_client()
         
-        result = supabase.table("users").update({
+        result = supabase.table("ozon_scraper_users").update({
             "is_blocked": False,
             "updated_at": datetime.now().isoformat()
         }).eq("id", user_id).execute()
@@ -294,7 +294,7 @@ async def get_user_stats(user_id: str):
         supabase = get_supabase_client()
         
         # Проверяем существование пользователя
-        user_result = supabase.table("users").select("*").eq("id", user_id).execute()
+        user_result = supabase.table("ozon_scraper_users").select("*").eq("id", user_id).execute()
         if not user_result.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

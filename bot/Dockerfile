@@ -1,27 +1,20 @@
-# Bot Dockerfile
-FROM python:3.10-slim
+# Bot Dockerfile для OZON Telegram Bot
+FROM python:3.12-slim
 
+# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Установка системных зависимостей
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Копирование requirements и установка зависимостей
+# Копируем файл с зависимостями
 COPY requirements.txt .
+
+# Устанавливаем Python зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копирование исходного кода
+# Копируем все файлы приложения
 COPY . .
 
-# Создание директории для логов
-RUN mkdir -p /app/logs
+# Создаем директорию для логов
+RUN mkdir -p logs
 
-# Переменные окружения
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-
-# Запуск бота
+# Запускаем бота
 CMD ["python", "main.py"]
-

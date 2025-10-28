@@ -32,7 +32,7 @@ async def create_article(article: ArticleCreate):
         supabase = get_supabase_client()
         
         # Проверяем, не добавлен ли уже этот артикул этим пользователем
-        existing = supabase.table("articles").select("*").eq(
+        existing = supabase.table("ozon_scraper_articles").select("*").eq(
             "article_number", article.article_number
         ).eq("user_id", article.user_id).execute()
         
@@ -83,7 +83,7 @@ async def create_article(article: ArticleCreate):
             "price_updated_at": datetime.now().isoformat()
         }
         
-        result = supabase.table("articles").insert(data).execute()
+        result = supabase.table("ozon_scraper_articles").insert(data).execute()
         
         if not result.data:
             raise HTTPException(
@@ -113,7 +113,7 @@ async def get_article(article_id: str):
     """
     try:
         supabase = get_supabase_client()
-        result = supabase.table("articles").select("*").eq("id", article_id).execute()
+        result = supabase.table("ozon_scraper_articles").select("*").eq("id", article_id).execute()
         
         if not result.data:
             raise HTTPException(
@@ -151,7 +151,7 @@ async def list_articles(
     try:
         supabase = get_supabase_client()
         
-        query = supabase.table("articles").select("*")
+        query = supabase.table("ozon_scraper_articles").select("*")
         
         if user_id:
             query = query.eq("user_id", user_id)
@@ -182,7 +182,7 @@ async def update_article(article_id: str, article_update: ArticleUpdate):
         supabase = get_supabase_client()
         
         # Проверяем существование артикула
-        existing = supabase.table("articles").select("*").eq("id", article_id).execute()
+        existing = supabase.table("ozon_scraper_articles").select("*").eq("id", article_id).execute()
         if not existing.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -199,7 +199,7 @@ async def update_article(article_id: str, article_update: ArticleUpdate):
         
         update_data["updated_at"] = datetime.now().isoformat()
         
-        result = supabase.table("articles").update(update_data).eq("id", article_id).execute()
+        result = supabase.table("ozon_scraper_articles").update(update_data).eq("id", article_id).execute()
         
         if not result.data:
             raise HTTPException(
@@ -231,7 +231,7 @@ async def delete_article(article_id: str):
         supabase = get_supabase_client()
         
         # Проверяем существование
-        existing = supabase.table("articles").select("id").eq("id", article_id).execute()
+        existing = supabase.table("ozon_scraper_articles").select("id").eq("id", article_id).execute()
         if not existing.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -239,7 +239,7 @@ async def delete_article(article_id: str):
             )
         
         # Удаляем
-        supabase.table("articles").delete().eq("id", article_id).execute()
+        supabase.table("ozon_scraper_articles").delete().eq("id", article_id).execute()
         
         logger.info(f"Артикул {article_id} удален")
         return None
@@ -265,7 +265,7 @@ async def check_article(article_id: str):
         supabase = get_supabase_client()
         
         # Получаем артикул из БД
-        result = supabase.table("articles").select("*").eq("id", article_id).execute()
+        result = supabase.table("ozon_scraper_articles").select("*").eq("id", article_id).execute()
         if not result.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -305,7 +305,7 @@ async def check_article(article_id: str):
             "updated_at": checked_at.isoformat()
         }
         
-        supabase.table("articles").update(update_data).eq("id", article_id).execute()
+        supabase.table("ozon_scraper_articles").update(update_data).eq("id", article_id).execute()
         
         logger.info(f"Артикул {article['article_number']} проверен и обновлен")
         

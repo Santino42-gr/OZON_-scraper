@@ -37,7 +37,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
-import { mockCrudService } from '@/services/mockCrudService';
+import { articlesApi } from '@/services/apiService';
 import { Article } from '@/types/crud';
 import { Search, MoreHorizontal, Eye, Edit, Trash2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -68,7 +68,7 @@ export default function Articles() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['articles', { page, pageSize, search: debouncedSearch, statusFilter }],
-    queryFn: () => mockCrudService.getArticles({
+    queryFn: () => articlesApi.getArticles({
       page,
       pageSize,
       search: debouncedSearch,
@@ -77,7 +77,7 @@ export default function Articles() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: mockCrudService.deleteArticle,
+    mutationFn: articlesApi.deleteArticle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['articles'] });
       toast.success('Артикул удален');
@@ -88,7 +88,7 @@ export default function Articles() {
   });
 
   const deleteMultipleMutation = useMutation({
-    mutationFn: mockCrudService.deleteMultipleArticles,
+    mutationFn: articlesApi.deleteMultipleArticles,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['articles'] });
       setSelectedIds([]);
@@ -98,7 +98,7 @@ export default function Articles() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Article> }) =>
-      mockCrudService.updateArticle(id, data),
+      articlesApi.updateArticle(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['articles'] });
       setEditArticle(null);
@@ -107,7 +107,7 @@ export default function Articles() {
   });
 
   const exportMutation = useMutation({
-    mutationFn: () => mockCrudService.exportArticles({
+    mutationFn: () => articlesApi.exportArticles({
       search: debouncedSearch,
       status: statusFilter,
     }),

@@ -1,27 +1,38 @@
-# Backend Dockerfile
-FROM python:3.10-slim
+# Backend Dockerfile для OZON Bot API
+FROM python:3.12-slim
 
+# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Установка системных зависимостей
+# Устанавливаем системные зависимости для Playwright
 RUN apt-get update && apt-get install -y \
-    gcc \
+    wget \
+    gnupg \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Копирование requirements и установка зависимостей
+# Копируем файл с зависимостями
 COPY requirements.txt .
+
+# Устанавливаем Python зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копирование исходного кода
+# Устанавливаем Playwright браузеры
+RUN playwright install chromium
+RUN playwright install-deps chromium
+
+# Копируем все файлы приложения
 COPY . .
 
-# Переменные окружения
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
+# Создаем директорию для логов
+RUN mkdir -p logs
 
-# Порт
+# Открываем порт
 EXPOSE 8000
 
-# Запуск приложения
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
 
+# Запускаем приложение
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -28,7 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { mockCrudService } from '@/services/mockCrudService';
+import { usersApi } from '@/services/apiService';
 import { User, Article } from '@/types/crud';
 import { Search, ChevronLeft, ChevronRight, MoreHorizontal, Package, Ban, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -51,11 +51,11 @@ export default function Users() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['users', { page, pageSize, search: debouncedSearch }],
-    queryFn: () => mockCrudService.getUsers({ page, pageSize, search: debouncedSearch }),
+    queryFn: () => usersApi.getUsers({ page, pageSize, search: debouncedSearch }),
   });
 
   const toggleBlockMutation = useMutation({
-    mutationFn: mockCrudService.toggleUserBlock,
+    mutationFn: usersApi.toggleUserBlock,
     onSuccess: (updatedUser) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(
@@ -66,7 +66,7 @@ export default function Users() {
 
   const { data: articlesData, isLoading: articlesLoading } = useQuery<Article[]>({
     queryKey: ['user-articles', selectedUser?.id],
-    queryFn: () => mockCrudService.getUserArticles(selectedUser!.id),
+    queryFn: () => usersApi.getUserArticles(selectedUser!.id),
     enabled: !!selectedUser,
   });
 

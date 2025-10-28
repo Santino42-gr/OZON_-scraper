@@ -1,4 +1,4 @@
-cd "/Users/sasha/Library/Mobile Documents/com~apple~CloudDocs/AIronLab/Cursor/OZON_ scraper
+cd "/Users/sasha/Library/Mobile Documents/com~apple~CloudDocs/AIronLab/Cursor/OZON_ scraper"
 1 - "When generating code, always reference the markdown documentation inside the `rules/` directory."
 2 - "Use the guidelines in `rules/backend-agent.md` for backend development"
 3 - "Use the guidelines in `rules/frontend-agent.md` for frontend development"

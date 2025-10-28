@@ -5,7 +5,7 @@ import { ActivityChart } from '@/components/dashboard/ActivityChart';
 import { RequestsChart } from '@/components/dashboard/RequestsChart';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { Skeleton } from '@/components/ui/skeleton';
-import { mockDashboardService } from '@/services/mockDashboardService';
+import { dashboardApi } from '@/services/apiService';
 
 const DashboardSkeleton = () => (
   <div className="flex flex-col gap-6 p-4 md:p-8">
@@ -32,25 +32,25 @@ const DashboardSkeleton = () => (
 );
 
 export default function Dashboard() {
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
     queryKey: ['dashboard', 'stats'],
-    queryFn: mockDashboardService.getStats,
+    queryFn: dashboardApi.getStats,
     refetchInterval: 30000, // автообновление каждые 30 сек
   });
 
   const { data: activityData, isLoading: activityLoading } = useQuery({
     queryKey: ['dashboard', 'activity'],
-    queryFn: mockDashboardService.getActivityData,
+    queryFn: dashboardApi.getActivityData,
   });
 
   const { data: requestsData, isLoading: requestsLoading } = useQuery({
     queryKey: ['dashboard', 'requests'],
-    queryFn: mockDashboardService.getRequestsData,
+    queryFn: dashboardApi.getRequestsData,
   });
 
   const { data: logs, isLoading: logsLoading } = useQuery({
     queryKey: ['dashboard', 'logs'],
-    queryFn: mockDashboardService.getRecentLogs,
+    queryFn: dashboardApi.getRecentLogs,
     refetchInterval: 10000, // автообновление каждые 10 сек
   });
 

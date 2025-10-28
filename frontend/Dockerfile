@@ -1,31 +1,38 @@
-# Frontend Dockerfile - Multi-stage build
-FROM node:18-alpine as build
+# Frontend Dockerfile для OZON Admin Panel
+# Multi-stage build
+
+# Stage 1: Build
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Копирование package files
+# Копируем package.json и package-lock.json
 COPY package*.json ./
 
-# Установка зависимостей
+# Устанавливаем зависимости
 RUN npm ci
 
-# Копирование исходного кода
+# Копируем все файлы
 COPY . .
 
-# Сборка приложения
+# Создаем production build
 RUN npm run build
 
-# Production stage
+# Stage 2: Production
 FROM nginx:alpine
 
-# Копирование собранного приложения
-COPY --from=build /app/dist /usr/share/nginx/html
+# Копируем собранное приложение из builder
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Копирование конфигурации nginx (если есть)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Копируем кастомную конфигурацию nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Порт
+# Открываем порт
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
+# Запускаем nginx
+CMD ["nginx", "-g", "daemon off;"]

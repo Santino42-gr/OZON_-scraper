@@ -29,29 +29,29 @@ async def get_dashboard_stats() -> Dict[str, Any]:
         supabase = get_supabase_client()
         
         # Получаем количество пользователей
-        users_result = supabase.table("users").select("id", count="exact").execute()
+        users_result = supabase.table("ozon_scraper_users").select("id", count="exact").execute()
         total_users = len(users_result.data) if users_result.data else 0
-        
+
         # Получаем количество активных пользователей (активность за последние 7 дней)
         week_ago = (datetime.now() - timedelta(days=7)).isoformat()
-        active_users_result = supabase.table("users").select("id").gte(
-            "last_active", week_ago
+        active_users_result = supabase.table("ozon_scraper_users").select("id").gte(
+            "last_active_at", week_ago
         ).execute()
         active_users = len(active_users_result.data) if active_users_result.data else 0
-        
+
         # Получаем количество артикулов
-        articles_result = supabase.table("articles").select("id", count="exact").execute()
+        articles_result = supabase.table("ozon_scraper_articles").select("id", count="exact").execute()
         total_articles = len(articles_result.data) if articles_result.data else 0
-        
+
         # Получаем количество активных артикулов
-        active_articles_result = supabase.table("articles").select("id").eq(
+        active_articles_result = supabase.table("ozon_scraper_articles").select("id").eq(
             "status", "active"
         ).execute()
         active_articles = len(active_articles_result.data) if active_articles_result.data else 0
-        
+
         # Получаем статистику по логам за последние 24 часа
         yesterday = (datetime.now() - timedelta(hours=24)).isoformat()
-        logs_result = supabase.table("logs").select("level").gte(
+        logs_result = supabase.table("ozon_scraper_logs").select("level").gte(
             "created_at", yesterday
         ).execute()
         

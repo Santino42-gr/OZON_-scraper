@@ -32,7 +32,7 @@ async def get_logs(
         supabase = get_supabase_client()
         
         # Строим запрос
-        query = supabase.table("logs").select("*")
+        query = supabase.table("ozon_scraper_logs").select("*")
         
         # Применяем фильтры
         if level:
@@ -54,7 +54,7 @@ async def get_logs(
         result = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
         
         # Получаем общее количество (приблизительно)
-        count_result = supabase.table("logs").select("id", count="exact").execute()
+        count_result = supabase.table("ozon_scraper_logs").select("id", count="exact").execute()
         total_count = count_result.count if hasattr(count_result, 'count') else len(result.data)
         
         return {
@@ -90,7 +90,7 @@ async def get_error_logs(
         start_date = datetime.now() - timedelta(hours=hours)
         
         # Получаем только ошибки
-        result = supabase.table("logs").select("*").eq(
+        result = supabase.table("ozon_scraper_logs").select("*").eq(
             "level", "error"
         ).gte(
             "created_at", start_date.isoformat()
@@ -125,7 +125,7 @@ async def get_logs_stats(hours: int = Query(24, description="За последн
         start_date = datetime.now() - timedelta(hours=hours)
         
         # Получаем все логи за период
-        result = supabase.table("logs").select("level").gte(
+        result = supabase.table("ozon_scraper_logs").select("level").gte(
             "created_at", start_date.isoformat()
         ).execute()
         
@@ -177,7 +177,7 @@ async def clear_old_logs(days: int = Query(30, description="Удалить ло�
         cutoff_date = datetime.now() - timedelta(days=days)
         
         # Удаляем старые логи
-        result = supabase.table("logs").delete().lt(
+        result = supabase.table("ozon_scraper_logs").delete().lt(
             "created_at", cutoff_date.isoformat()
         ).execute()
         

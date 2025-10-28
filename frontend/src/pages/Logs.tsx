@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { mockCrudService } from '@/services/mockCrudService';
+import { logsApi } from '@/services/apiService';
 import { Log } from '@/types/crud';
 import { Search, ChevronLeft, ChevronRight, XCircle, AlertTriangle, Info, Eye } from 'lucide-react';
 
@@ -43,7 +43,7 @@ export default function Logs() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['logs', { page, pageSize, search: debouncedSearch, levelFilter }],
-    queryFn: () => mockCrudService.getLogs({
+    queryFn: () => logsApi.getLogs({
       page,
       pageSize,
       level: levelFilter,
