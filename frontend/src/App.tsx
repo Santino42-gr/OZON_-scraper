@@ -1,16 +1,16 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { Toaster } from '@/components/ui/toaster';
-import { Toaster as Sonner } from '@/components/ui/sonner';
-import { ProtectedRoute } from '@/components/common/ProtectedRoute';
-import { Layout } from '@/components/common/Layout';
-import Login from '@/pages/Login';
-import ResetPassword from '@/pages/ResetPassword';
-import Dashboard from '@/pages/Dashboard';
-import Articles from '@/pages/Articles';
-import Users from '@/pages/Users';
-import Logs from '@/pages/Logs';
+import { AuthProvider } from '@/contexts/AuthContext.tsx';
+import { Toaster } from '@/components/ui/toaster.tsx';
+import { Toaster as Sonner } from '@/components/ui/sonner.tsx';
+import { ProtectedRoute } from '@/components/common/ProtectedRoute.tsx';
+import { Layout } from '@/components/common/Layout.tsx';
+import Login from '@/pages/Login.tsx';
+import ResetPassword from '@/pages/ResetPassword.tsx';
+import Dashboard from '@/pages/Dashboard.tsx';
+import Articles from '@/pages/Articles.tsx';
+import Users from '@/pages/Users.tsx';
+import Logs from '@/pages/Logs.tsx';
 
 const queryClient = new QueryClient({
   defaultOptions: {
