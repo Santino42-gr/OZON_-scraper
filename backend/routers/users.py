@@ -37,14 +37,23 @@ async def create_user(user: UserCreate):
         existing = supabase.table("ozon_scraper_users").select("*").eq(
             "telegram_id", user.telegram_id
         ).execute()
-        
+
         if existing.data:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Пользователь уже зарегистрирован"
-            )
-        
-        # Создаем пользователя
+            # Пользователь уже существует - обновляем last_active_at и возвращаем его данные
+            user_id = existing.data[0]["id"]
+            update_data = {
+                "last_active_at": datetime.now().isoformat(),
+                "telegram_username": user.username  # Обновляем username на случай если изменился
+            }
+
+            result = supabase.table("ozon_scraper_users").update(update_data).eq(
+                "id", user_id
+            ).execute()
+
+            logger.info(f"Пользователь {user.telegram_id} уже существует, обновлен last_active_at")
+            return result.data[0] if result.data else existing.data[0]
+
+        # Создаем нового пользователя
         data = {
             "telegram_id": user.telegram_id,
             "telegram_username": user.username,
@@ -52,16 +61,16 @@ async def create_user(user: UserCreate):
             "created_at": datetime.now().isoformat(),
             "last_active_at": datetime.now().isoformat()
         }
-        
+
         result = supabase.table("ozon_scraper_users").insert(data).execute()
-        
+
         if not result.data:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Ошибка при создании пользователя"
             )
-        
-        logger.info(f"Пользователь {user.telegram_id} зарегистрирован")
+
+        logger.info(f"Пользователь {user.telegram_id} успешно зарегистрирован")
         return result.data[0]
         
     except HTTPException:
