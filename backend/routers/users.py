@@ -20,10 +20,11 @@ router = APIRouter()
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(user: UserCreate):
     """
     Регистрация нового пользователя
-    
+
     - **telegram_id**: Telegram ID пользователя
     - **username**: Telegram username (опционально)
     - **first_name**: Имя пользователя (опционально)
