@@ -29,15 +29,14 @@ class UserUpdate(BaseModel):
     is_blocked: Optional[bool] = None
 
 
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     """Модель ответа с полной информацией о пользователе"""
     id: str = Field(..., description="UUID пользователя")
+    telegram_id: int = Field(..., description="Telegram ID пользователя")
+    telegram_username: Optional[str] = Field(None, description="Telegram username")
     created_at: datetime = Field(..., description="Дата регистрации")
-    updated_at: datetime = Field(..., description="Дата последнего обновления")
-    last_active: Optional[datetime] = Field(None, description="Последняя активность")
+    last_active_at: Optional[datetime] = Field(None, description="Последняя активность")
     is_blocked: bool = Field(False, description="Заблокирован ли пользователь")
-    is_admin: bool = Field(False, description="Является ли администратором")
-    articles_count: int = Field(0, description="Количество отслеживаемых артикулов")
     
     class Config:
         from_attributes = True
