@@ -105,8 +105,11 @@ Thumbs.db
 # Credentials (just in case)
 *credentials*
 *secret*
-*password*
 *.pem
 *.key
 !env.example
+
+# But allow password-related source files
+!*Password*.tsx
+!*password*.ts
 
