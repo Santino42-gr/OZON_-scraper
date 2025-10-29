@@ -6,6 +6,16 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Принимаем build arguments
+ARG VITE_BACKEND_API_URL
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+
+# Устанавливаем их как environment variables для Vite
+ENV VITE_BACKEND_API_URL=$VITE_BACKEND_API_URL
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+
 # Копируем package.json и package-lock.json
 COPY package*.json ./
 
