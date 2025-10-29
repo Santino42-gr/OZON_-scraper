@@ -31,7 +31,7 @@ apiClient.interceptors.response.use(
 
 export const dashboardApi = {
   async getStats(): Promise<DashboardStats> {
-    const { data } = await apiClient.get('/stats/dashboard');
+    const { data } = await apiClient.get('/stats/dashboard/');
     return {
       users: {
         total: data.users.total,
@@ -70,7 +70,7 @@ export const dashboardApi = {
   },
 
   async getRecentLogs(): Promise<LogEntry[]> {
-    const { data } = await apiClient.get('/logs', {
+    const { data } = await apiClient.get('/logs/', {
       params: { limit: 10 },
     });
 
@@ -95,7 +95,7 @@ export const articlesApi = {
     status?: string;
     userId?: string;
   }): Promise<PaginationData<Article>> {
-    const { data } = await apiClient.get('/articles', {
+    const { data } = await apiClient.get('/articles/', {
       params: {
         skip: (params.page - 1) * params.pageSize,
         limit: params.pageSize,
@@ -186,7 +186,7 @@ export const usersApi = {
     pageSize: number;
     search?: string;
   }): Promise<PaginationData<User>> {
-    const { data } = await apiClient.get('/users', {
+    const { data } = await apiClient.get('/users/', {
       params: {
         skip: (params.page - 1) * params.pageSize,
         limit: params.pageSize,
@@ -252,7 +252,7 @@ export const logsApi = {
     level?: string;
     search?: string;
   }): Promise<PaginationData<Log>> {
-    const { data } = await apiClient.get('/logs', {
+    const { data } = await apiClient.get('/logs/', {
       params: {
         skip: (params.page - 1) * params.pageSize,
         limit: params.pageSize,
