@@ -47,12 +47,10 @@ async def create_user(user: UserCreate):
         # Создаем пользователя
         data = {
             "telegram_id": user.telegram_id,
-            "username": user.username,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
+            "telegram_username": user.username,
             "is_blocked": False,
-            "is_admin": False,
-            "last_active": datetime.now().isoformat()
+            "created_at": datetime.now().isoformat(),
+            "last_active_at": datetime.now().isoformat()
         }
         
         result = supabase.table("ozon_scraper_users").insert(data).execute()
