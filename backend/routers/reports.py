@@ -35,7 +35,7 @@ async def generate_report(report_request: ReportRequest, user_id: str):
         # Получаем данные артикулов
         articles_data = []
         for article_id in report_request.article_ids:
-            result = supabase.table("articles").select("*").eq("id", article_id).execute()
+            result = supabase.table("ozon_scraper_articles").select("*").eq("id", article_id).execute()
             if result.data:
                 articles_data.append(result.data[0])
         
@@ -70,7 +70,7 @@ async def generate_report(report_request: ReportRequest, user_id: str):
             "created_at": datetime.now().isoformat()
         }
         
-        result = supabase.table("reports").insert(report_db_data).execute()
+        result = supabase.table("ozon_scraper_reports").insert(report_db_data).execute()
         
         if not result.data:
             raise HTTPException(
@@ -107,7 +107,7 @@ async def get_report(report_id: str):
     """
     try:
         supabase = get_supabase_client()
-        result = supabase.table("reports").select("*").eq("id", report_id).execute()
+        result = supabase.table("ozon_scraper_reports").select("*").eq("id", report_id).execute()
         
         if not result.data:
             raise HTTPException(
@@ -147,7 +147,7 @@ async def list_reports(user_id: str, limit: int = 50, offset: int = 0):
     try:
         supabase = get_supabase_client()
         
-        result = supabase.table("reports").select("id, report_type, created_at, report_data").eq(
+        result = supabase.table("ozon_scraper_reports").select("id, report_type, created_at, report_data").eq(
             "user_id", user_id
         ).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
         
@@ -185,7 +185,7 @@ async def delete_report(report_id: str):
         supabase = get_supabase_client()
         
         # Проверяем существование
-        existing = supabase.table("reports").select("id").eq("id", report_id).execute()
+        existing = supabase.table("ozon_scraper_reports").select("id").eq("id", report_id).execute()
         if not existing.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -193,7 +193,7 @@ async def delete_report(report_id: str):
             )
         
         # Удаляем
-        supabase.table("reports").delete().eq("id", report_id).execute()
+        supabase.table("ozon_scraper_reports").delete().eq("id", report_id).execute()
         
         logger.info(f"Отчет {report_id} удален")
         return None

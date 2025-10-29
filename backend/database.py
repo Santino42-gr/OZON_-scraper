@@ -39,7 +39,7 @@ async def check_database_connection() -> bool:
     try:
         client = get_supabase_client()
         # Простой запрос для проверки подключения
-        result = client.table("users").select("id").limit(1).execute()
+        result = client.table("ozon_scraper_users").select("id").limit(1).execute()
         return True
     except Exception as e:
         print(f"Database connection error: {e}")

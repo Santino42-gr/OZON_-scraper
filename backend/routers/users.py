@@ -304,7 +304,7 @@ async def get_user_stats(user_id: str):
         user = user_result.data[0]
         
         # Получаем статистику по артикулам
-        articles_result = supabase.table("articles").select("id").eq("user_id", user_id).execute()
+        articles_result = supabase.table("ozon_scraper_articles").select("id").eq("user_id", user_id).execute()
         total_articles = len(articles_result.data) if articles_result.data else 0
         
         # TODO: Добавить статистику по проверкам когда будет таблица logs

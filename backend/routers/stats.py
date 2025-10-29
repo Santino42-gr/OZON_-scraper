@@ -118,17 +118,17 @@ async def get_user_stats(period: str = Query("week", description="Период (
         start_date = (datetime.now() - periods[period]).isoformat()
         
         # Получаем новых пользователей за период
-        new_users_result = supabase.table("users").select("*").gte(
+        new_users_result = supabase.table("ozon_scraper_users").select("*").gte(
             "created_at", start_date
         ).execute()
-        
+
         # Получаем активных пользователей за период
-        active_users_result = supabase.table("users").select("*").gte(
+        active_users_result = supabase.table("ozon_scraper_users").select("*").gte(
             "last_active", start_date
         ).execute()
-        
+
         # Получаем всех пользователей
-        all_users_result = supabase.table("users").select("*").execute()
+        all_users_result = supabase.table("ozon_scraper_users").select("*").execute()
         
         new_users = new_users_result.data if new_users_result.data else []
         active_users = active_users_result.data if active_users_result.data else []
@@ -170,7 +170,7 @@ async def get_article_stats() -> Dict[str, Any]:
         supabase = get_supabase_client()
         
         # Получаем все артикулы
-        articles_result = supabase.table("articles").select("*").execute()
+        articles_result = supabase.table("ozon_scraper_articles").select("*").execute()
         
         if not articles_result.data:
             return {
@@ -241,7 +241,7 @@ async def get_activity_stats(hours: int = Query(24, description="За после
         start_date = (datetime.now() - timedelta(hours=hours)).isoformat()
         
         # Получаем логи за период
-        logs_result = supabase.table("logs").select("*").gte(
+        logs_result = supabase.table("ozon_scraper_logs").select("*").gte(
             "created_at", start_date
         ).execute()
         
