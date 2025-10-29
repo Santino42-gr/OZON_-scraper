@@ -166,8 +166,10 @@ docker-compose up -d
 - [Миграции](docs/migrations/)
 
 ### Deployment 🚀
-- [VPS Deployment Guide](docs/VPS_DEPLOYMENT.md) - Полная инструкция
-- [Quick Deploy Guide](docs/QUICK_DEPLOY.md) - Краткий гайд
+- [🎯 Пошаговая инструкция деплоя](docs/DEPLOY_INSTRUCTION.md) - **Начни отсюда!**
+- [Доступ к админ-панели](docs/ADMIN_PANEL_ACCESS.md) - Как открыть админку после деплоя
+- [VPS Deployment Guide](docs/VPS_DEPLOYMENT.md) - Полная техническая инструкция
+- [Quick Deploy Guide](docs/QUICK_DEPLOY.md) - Краткий справочник команд
 - [Phase 6 Summary](docs/PHASE_6_SUMMARY.md) - Итоги контейнеризации
 
 ## 🤖 Команды Telegram бота

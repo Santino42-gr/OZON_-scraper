@@ -32,7 +32,7 @@ const DashboardSkeleton = () => (
 );
 
 export default function Dashboard() {
-  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard', 'stats'],
     queryFn: dashboardApi.getStats,
     refetchInterval: 30000, // автообновление каждые 30 сек
