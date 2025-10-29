@@ -3,7 +3,7 @@ import {
   ActivityDataPoint,
   RequestsDataPoint,
   LogEntry,
-} from '@/types/dashboard';
+} from '@/types/dashboard.ts';
 
 // Генерация mock данных для Dashboard
 export const mockDashboardService = {

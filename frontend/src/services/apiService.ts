@@ -4,8 +4,8 @@ import {
   ActivityDataPoint,
   RequestsDataPoint,
   LogEntry,
-} from '@/types/dashboard';
-import { Article, User, Log, PaginationData } from '@/types/crud';
+} from '@/types/dashboard.ts';
+import { Article, User, Log, PaginationData } from '@/types/crud.ts';
 
 // Создаем axios instance с базовым URL
 const API_BASE_URL = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:8000';

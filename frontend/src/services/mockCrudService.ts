@@ -1,4 +1,4 @@
-import { Article, User, Log, PaginationData } from '@/types/crud';
+import { Article, User, Log, PaginationData } from '@/types/crud.ts';
 
 // Mock данные для CRUD операций
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
