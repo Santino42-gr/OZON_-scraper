@@ -41,6 +41,29 @@ from .ozon_models import (
     OzonAPIError
 )
 
+from .comparison import (
+    ArticleRole,
+    GroupType,
+    CompetitivenessGrade,
+    ArticleGroupCreate,
+    ArticleGroupUpdate,
+    ArticleGroupResponse,
+    ArticleGroupMemberCreate,
+    ArticleGroupMemberResponse,
+    PriceDifference,
+    RatingDifference,
+    SPPDifference,
+    ReviewsDifference,
+    ComparisonMetrics,
+    ArticleComparisonData,
+    ComparisonResponse,
+    ComparisonSnapshotCreate,
+    ComparisonSnapshotResponse,
+    ComparisonHistoryResponse,
+    QuickComparisonCreate,
+    UserComparisonStats
+)
+
 __all__ = [
     # Article models
     "ArticleBase",
@@ -75,4 +98,26 @@ __all__ = [
     "PriceHistoryStats",
     "OzonSearchResult",
     "OzonAPIError",
+
+    # Comparison models
+    "ArticleRole",
+    "GroupType",
+    "CompetitivenessGrade",
+    "ArticleGroupCreate",
+    "ArticleGroupUpdate",
+    "ArticleGroupResponse",
+    "ArticleGroupMemberCreate",
+    "ArticleGroupMemberResponse",
+    "PriceDifference",
+    "RatingDifference",
+    "SPPDifference",
+    "ReviewsDifference",
+    "ComparisonMetrics",
+    "ArticleComparisonData",
+    "ComparisonResponse",
+    "ComparisonSnapshotCreate",
+    "ComparisonSnapshotResponse",
+    "ComparisonHistoryResponse",
+    "QuickComparisonCreate",
+    "UserComparisonStats",
 ]
