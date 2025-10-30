@@ -1,14 +1,13 @@
 /**
  * ComparisonHistoryChart Component
- * Displays comparison history as a line chart
+ * Displays comparison history as a simple list (no charts in MVP)
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, Calendar } from 'lucide-react';
+import { TrendingUp, Calendar, ArrowUp, ArrowDown } from 'lucide-react';
 import { ComparisonHistoryResponse } from '@/services/comparisonService';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface ComparisonHistoryChartProps {
   history: ComparisonHistoryResponse;
@@ -59,22 +58,15 @@ export const ComparisonHistoryChart: React.FC<ComparisonHistoryChartProps> = ({
     );
   }
 
-  // Prepare chart data
-  const chartData = history.snapshots
-    .slice()
-    .reverse() // Reverse to show chronological order
-    .map((snapshot) => ({
-      date: new Date(snapshot.snapshot_date).toLocaleDateString('ru-RU', {
-        month: 'short',
-        day: 'numeric',
-      }),
-      index: Math.round(snapshot.competitiveness_index * 100),
-      timestamp: snapshot.snapshot_date,
-    }));
-
+  // Calculate stats
+  const indices = history.snapshots.map(s => s.competitiveness_index * 100);
   const currentIndex = history.snapshots[0]?.competitiveness_index;
   const previousIndex = history.snapshots[1]?.competitiveness_index;
   const trend = currentIndex && previousIndex ? currentIndex - previousIndex : null;
+
+  const minIndex = Math.min(...indices);
+  const maxIndex = Math.max(...indices);
+  const avgIndex = indices.reduce((sum, val) => sum + val, 0) / indices.length;
 
   return (
     <Card>
@@ -96,67 +88,94 @@ export const ComparisonHistoryChart: React.FC<ComparisonHistoryChartProps> = ({
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 12 }}
-              tickMargin={10}
-            />
-            <YAxis
-              domain={[0, 100]}
-              tick={{ fontSize: 12 }}
-              tickFormatter={(value) => `${value}%`}
-            />
-            <Tooltip
-              content={({ active, payload }) => {
-                if (active && payload && payload.length) {
-                  return (
-                    <div className="bg-background border rounded-lg p-3 shadow-lg">
-                      <p className="text-sm font-medium">{payload[0].payload.date}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Индекс: <span className="font-semibold">{payload[0].value}%</span>
+      <CardContent className="space-y-6">
+        {/* Statistics */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="text-center p-4 border rounded-lg">
+            <p className="text-sm text-muted-foreground mb-1">Минимум</p>
+            <p className="text-2xl font-semibold">
+              {minIndex.toFixed(0)}%
+            </p>
+          </div>
+          <div className="text-center p-4 border rounded-lg">
+            <p className="text-sm text-muted-foreground mb-1">Средний</p>
+            <p className="text-2xl font-semibold">
+              {avgIndex.toFixed(0)}%
+            </p>
+          </div>
+          <div className="text-center p-4 border rounded-lg">
+            <p className="text-sm text-muted-foreground mb-1">Максимум</p>
+            <p className="text-2xl font-semibold">
+              {maxIndex.toFixed(0)}%
+            </p>
+          </div>
+        </div>
+
+        {/* Snapshots List */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-muted-foreground">Последние снэпшоты:</h4>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {history.snapshots.slice(0, 10).map((snapshot, index) => {
+              const nextSnapshot = history.snapshots[index + 1];
+              const change = nextSnapshot
+                ? (snapshot.competitiveness_index - nextSnapshot.competitiveness_index) * 100
+                : null;
+
+              return (
+                <div
+                  key={snapshot.id}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm">
+                      <p className="font-medium">
+                        {new Date(snapshot.snapshot_date).toLocaleDateString('ru-RU', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(snapshot.snapshot_date).toLocaleTimeString('ru-RU', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </p>
                     </div>
-                  );
-                }
-                return null;
-              }}
-            />
-            <Legend />
-            <Line
-              type="monotone"
-              dataKey="index"
-              name="Индекс конкурентоспособности"
-              stroke="hsl(var(--primary))"
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+                  </div>
 
-        <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t">
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-1">Минимум</p>
-            <p className="text-lg font-semibold">
-              {Math.min(...chartData.map(d => d.index))}%
-            </p>
+                  <div className="flex items-center gap-3">
+                    {change !== null && (
+                      <div className={`flex items-center gap-1 text-sm ${
+                        change > 0 ? 'text-green-600' : change < 0 ? 'text-red-600' : 'text-gray-600'
+                      }`}>
+                        {change > 0 ? (
+                          <ArrowUp className="h-3 w-3" />
+                        ) : change < 0 ? (
+                          <ArrowDown className="h-3 w-3" />
+                        ) : null}
+                        {change !== 0 && (
+                          <span className="font-mono text-xs">
+                            {change > 0 ? '+' : ''}{change.toFixed(1)}%
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <Badge variant="outline" className="font-mono">
+                      {(snapshot.competitiveness_index * 100).toFixed(0)}%
+                    </Badge>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-1">Средний</p>
-            <p className="text-lg font-semibold">
-              {Math.round(chartData.reduce((sum, d) => sum + d.index, 0) / chartData.length)}%
+
+          {history.snapshots.length > 10 && (
+            <p className="text-xs text-muted-foreground text-center pt-2">
+              Показаны первые 10 из {history.snapshots.length} снэпшотов
             </p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-1">Максимум</p>
-            <p className="text-lg font-semibold">
-              {Math.max(...chartData.map(d => d.index))}%
-            </p>
-          </div>
+          )}
         </div>
       </CardContent>
     </Card>

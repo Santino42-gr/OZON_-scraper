@@ -176,7 +176,7 @@ export const Comparison: React.FC = () => {
                 <Alert variant="destructive" className="py-2 px-3">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription className="text-xs">
-                    Данные устарели (> 1 часа)
+                    Данные устарели (&gt; 1 часа)
                   </AlertDescription>
                 </Alert>
               )}
