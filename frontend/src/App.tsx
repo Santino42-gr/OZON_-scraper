@@ -9,6 +9,7 @@ import Login from '@/pages/Login.tsx';
 import ResetPassword from '@/pages/ResetPassword.tsx';
 import Dashboard from '@/pages/Dashboard.tsx';
 import Articles from '@/pages/Articles.tsx';
+import { Comparison } from '@/pages/Comparison.tsx';
 import Users from '@/pages/Users.tsx';
 import Logs from '@/pages/Logs.tsx';
 
@@ -42,6 +43,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/dashboard" element={<Navigate to="/" replace />} />
               <Route path="/articles" element={<Articles />} />
+              <Route path="/comparison" element={<Comparison />} />
               <Route path="/users" element={<Users />} />
               <Route path="/logs" element={<Logs />} />
             </Route>

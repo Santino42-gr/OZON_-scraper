@@ -11,12 +11,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { LogOut, User, LayoutDashboard, Package, Users, FileText } from 'lucide-react';
+import { LogOut, User, LayoutDashboard, Package, Users, FileText, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/', label: 'Дашборд', icon: LayoutDashboard },
   { path: '/articles', label: 'Артикулы', icon: Package },
+  { path: '/comparison', label: 'Сравнение', icon: Scale },
   { path: '/users', label: 'Пользователи', icon: Users },
   { path: '/logs', label: 'Логи', icon: FileText },
 ];
