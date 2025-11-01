@@ -162,6 +162,7 @@ class OzonService:
                 name=f"Товар {article}",
                 price=1999.0,
                 old_price=2499.0,
+                average_price_7days=None,  # Будет вычислено позже на основе истории
                 rating=4.5,
                 reviews_count=123,
                 available=True,
