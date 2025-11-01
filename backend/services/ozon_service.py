@@ -134,49 +134,33 @@ class OzonService:
         # Для поиска можем использовать search
         return f"{self.base_url}/search/?text={article}"
 
-    async def get_product_info(self, article: str, use_cache: bool = True) -> Optional[ProductInfo]:
+    async def get_product_info(self, article: str, use_cache: bool = True):
         """
         Получить полную информацию о товаре
-        
+
         Args:
             article: артикул товара OZON
             use_cache: использовать кеш
-            
+
         Returns:
-            ProductInfo или None если товар не найден
+            ProductInfo (from models.ozon_models) или None если товар не найден
         """
-        # Проверить кеш
-        if use_cache:
-            cached = self._get_from_cache(article)
-            if cached:
-                return cached
+        # Используем реальный OzonScraper вместо заглушки
+        from services.ozon_scraper import get_ozon_scraper
 
         try:
-            # TODO: Реализовать с Playwright
-            # Пока возвращаем заглушку
-            logger.warning(f"Fetching product {article} - Playwright implementation pending")
-            
-            # Заглушка для тестирования
-            product = ProductInfo(
-                article=article,
-                name=f"Товар {article}",
-                price=1999.0,
-                old_price=2499.0,
-                average_price_7days=None,  # Будет вычислено позже на основе истории
-                rating=4.5,
-                reviews_count=123,
-                available=True,
-                url=self._construct_product_url(article),
-            )
-            
-            # Сохранить в кеш
-            if use_cache:
-                self._save_to_cache(article, product)
-            
+            scraper = get_ozon_scraper()
+            product = await scraper.get_product_info(article, use_cache=use_cache)
+
+            if product:
+                logger.info(f"✅ Product found: {article} - {product.name}")
+            else:
+                logger.warning(f"⚠️  Product not found: {article}")
+
             return product
 
         except Exception as e:
-            logger.error(f"Error fetching product {article}: {e}")
+            logger.error(f"❌ Error fetching product {article}: {e}")
             return None
 
     async def get_product_price(self, article: str) -> Optional[float]:
