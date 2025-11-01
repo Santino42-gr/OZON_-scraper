@@ -908,15 +908,10 @@ class ComparisonService:
             # Создаем новый
             logger.info(f"Creating new article {article_number}")
             article = await self.article_service.create_article(
-                ArticleCreate(
-                    article_number=article_number,
-                    user_id=user_id
-                )
+                user_id=user_id,
+                article_number=article_number,
+                fetch_data=scrape
             )
-
-            # Обновляем данные если нужно
-            if scrape:
-                await self.article_service.check_article(article.id, user_id)
 
             return article
 

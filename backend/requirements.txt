@@ -32,6 +32,9 @@ passlib[bcrypt]==1.7.4
 python-dateutil==2.9.0
 pytz==2024.2
 
+# Scheduling
+apscheduler==3.10.4
+
 # Logging
 loguru==0.7.2
 

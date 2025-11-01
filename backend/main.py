@@ -84,14 +84,18 @@ async def startup_event():
     logger.info(f"API URL: {settings.BACKEND_API_URL}")
     logger.info(f"CORS Origins: {settings.cors_origins_list}")
     logger.info("=" * 60)
-    
+
     # Проверка подключения к БД
     from database import check_database_connection
     if await check_database_connection():
         logger.success("✅ Database connection successful")
     else:
         logger.error("❌ Database connection failed")
-    
+
+    # Запуск планировщика задач
+    from services.scheduler import start_scheduler
+    start_scheduler()
+
     logger.info("📚 API Documentation available at: /docs")
     logger.info("🔄 ReDoc available at: /redoc")
 
@@ -100,6 +104,10 @@ async def startup_event():
 async def shutdown_event():
     """Действия при остановке приложения"""
     logger.info("🛑 Shutting down OZON Bot Backend API...")
+
+    # Остановка планировщика задач
+    from services.scheduler import stop_scheduler
+    stop_scheduler()
 
 
 @app.get("/")
