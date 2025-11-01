@@ -20,6 +20,7 @@ import time
 import uuid
 import traceback
 import random
+import re
 from typing import Optional, Dict, List, Any
 from datetime import datetime, timedelta
 from collections import deque
@@ -258,8 +259,9 @@ class OzonScraper:
                         "--no-sandbox",
                         "--disable-setuid-sandbox",
                         "--disable-web-security",
-                        "--disable-features=IsolateOrigins,site-per-process"
-                    ]
+                        "--disable-features=IsolateOrigins,site-per-process,VizDisplayCompositor"
+                    ],
+                    slow_mo=50  # Замедление для имитации человеческого поведения
                 )
 
                 # Контекст с настройками реального браузера
@@ -490,7 +492,6 @@ class OzonScraper:
                 reviews_text = reviews_elem.get_text(strip=True)
                 try:
                     # Извлекаем число из текста типа "123 отзыва"
-                    import re
                     match = re.search(r'\d+', reviews_text)
                     if match:
                         reviews_count = int(match.group())
@@ -560,35 +561,34 @@ class OzonScraper:
     def _parse_price_text(self, price_text: str) -> Optional[float]:
         """
         Парсинг цены из текста
-        
+
         Args:
             price_text: Текст с ценой (например, "1 999 ₽", "1999", "1,999.00")
-            
+
         Returns:
             Цена как float или None
         """
         try:
             # Убираем все кроме цифр, точек и запятых
-            import re
             cleaned = re.sub(r'[^\d,.]', '', price_text)
-            
+
             # Заменяем запятую на точку
             cleaned = cleaned.replace(',', '.')
-            
+
             # Если несколько точек, оставляем только последнюю (десятичный разделитель)
             parts = cleaned.split('.')
             if len(parts) > 2:
                 cleaned = ''.join(parts[:-1]) + '.' + parts[-1]
-            
+
             # Конвертируем в float
             price = float(cleaned)
-            
+
             return price if price > 0 else None
-            
+
         except Exception as e:
             logger.debug(f"Failed to parse price from '{price_text}': {e}")
             return None
-    
+
     # ==================== СПП Метрики ====================
     
     @staticmethod
@@ -690,17 +690,17 @@ class OzonScraper:
                     await page.wait_for_selector('[data-widget="searchResultsV2"]', timeout=5000)
                 except:
                     logger.warning(f"⚠️  Timeout waiting for search results for {article}")
-                
+
                 # Получаем HTML
                 html = await page.content()
-                
-                # Парсим
+
+                # Парсим информацию о товаре
                 product = self._parse_product_from_html(html, article)
-                
+
                 if product:
                     product.source = ScrapingSource.PLAYWRIGHT
                     self.stats["playwright_requests"] += 1
-                
+
                 return product
                 
             finally:
