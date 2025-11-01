@@ -122,29 +122,29 @@ class PriceHistoryCollector:
                 logger.warning(f"No data found for article: {article}")
                 return None
             
-            # Рассчитываем СПП метрики
+            # Рассчитываем СПП метрики (используем прямой доступ к атрибутам Pydantic модели)
             spp_metrics = OzonScraper.calculate_spp_metrics(
-                product_info.get("average_price_7days"),
-                product_info.get("normal_price"),
-                product_info.get("ozon_card_price")
+                product_info.average_price_7days,
+                product_info.normal_price,
+                product_info.ozon_card_price
             )
-            
-            # Формируем данные для записи в БД
+
+            # Формируем данные для записи в БД (прямой доступ к атрибутам Pydantic модели)
             price_data = {
                 "article_number": article,
-                "price": product_info.get("price"),
-                "normal_price": product_info.get("normal_price"),
-                "ozon_card_price": product_info.get("ozon_card_price"),
-                "old_price": product_info.get("old_price"),
+                "price": product_info.price,
+                "normal_price": product_info.normal_price,
+                "ozon_card_price": product_info.ozon_card_price,
+                "old_price": product_info.old_price,
                 "spp1": spp_metrics["spp1"],
                 "spp2": spp_metrics["spp2"],
                 "spp_total": spp_metrics["spp_total"],
-                "product_available": product_info.get("available", True),
-                "rating": product_info.get("rating"),
-                "reviews_count": product_info.get("reviews_count"),
+                "product_available": True,  # ProductPriceDetailed не имеет поля available
+                "rating": None,  # ProductPriceDetailed не имеет поля rating
+                "reviews_count": None,  # ProductPriceDetailed не имеет поля reviews_count
                 "source": "cron_scraping",
                 "scraping_success": True,
-                "scraping_duration_ms": product_info.get("fetch_time_ms"),
+                "scraping_duration_ms": None,  # ProductPriceDetailed не имеет поля fetch_time_ms
                 "price_date": datetime.now().isoformat()
             }
             
