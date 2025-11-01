@@ -504,6 +504,7 @@ class OzonScraper:
                 normal_price=normal_price,
                 ozon_card_price=ozon_card_price,
                 old_price=old_price,
+                average_price_7days=None,  # Будет вычислено позже на основе истории
                 rating=rating,
                 reviews_count=reviews_count,
                 availability=availability,
