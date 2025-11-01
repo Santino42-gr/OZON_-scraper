@@ -242,22 +242,51 @@ class OzonScraper:
         }
     
     async def _init_playwright(self):
-        """Инициализация Playwright (lazy loading)"""
+        """Инициализация Playwright (lazy loading) с защитой от обнаружения"""
         if self._playwright is None:
             try:
                 from playwright.async_api import async_playwright
-                
+
                 self._playwright = await async_playwright().start()
+
+                # Запуск браузера с аргументами для обхода детекции
                 self._browser = await self._playwright.chromium.launch(
-                    headless=getattr(settings, 'PLAYWRIGHT_HEADLESS', True)
+                    headless=getattr(settings, 'PLAYWRIGHT_HEADLESS', True),
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--disable-dev-shm-usage",
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-web-security",
+                        "--disable-features=IsolateOrigins,site-per-process"
+                    ]
                 )
+
+                # Контекст с настройками реального браузера
                 self._context = await self._browser.new_context(
                     viewport={"width": 1920, "height": 1080},
-                    user_agent=self._get_default_headers()["User-Agent"]
+                    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    java_script_enabled=True,
+                    ignore_https_errors=True,
+                    locale="ru-RU",
+                    timezone_id="Europe/Moscow"
                 )
-                
-                logger.info("✅ Playwright initialized successfully")
-                
+
+                # Маскировка webdriver - КРИТИЧЕСКИ ВАЖНО для обхода антибот
+                await self._context.add_init_script("""
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined
+                    });
+                    Object.defineProperty(navigator, 'plugins', {
+                        get: () => [1, 2, 3, 4, 5]
+                    });
+                    Object.defineProperty(navigator, 'languages', {
+                        get: () => ['ru-RU', 'ru', 'en-US', 'en']
+                    });
+                """)
+
+                logger.info("✅ Playwright initialized successfully with anti-detection")
+
             except ImportError:
                 logger.error(
                     "❌ Playwright not installed! "
@@ -630,10 +659,18 @@ class OzonScraper:
             try:
                 url = self._construct_product_url(article)
                 logger.info(f"🌐 Scraping {article} via Playwright: {url}")
-                
+
+                # Устанавливаем таймауты
+                page.set_default_timeout(15000)
+                page.set_default_navigation_timeout(20000)
+
+                # Имитация человеческого поведения - случайная задержка перед запросом
+                import random
+                await asyncio.sleep(random.uniform(1.0, 3.0))
+
                 # Переходим на страницу
                 response = await page.goto(url, wait_until="domcontentloaded")
-                
+
                 # Проверяем статус
                 if response.status != 200:
                     logger.warning(f"⚠️  HTTP {response.status} for {article}")
@@ -643,7 +680,11 @@ class OzonScraper:
                             request=None,
                             response=response
                         )
-                
+
+                # Имитация прокрутки страницы (человеческое поведение)
+                await page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
+                await asyncio.sleep(random.uniform(0.5, 1.5))
+
                 # Ждем загрузки контента (можно настроить селекторы)
                 try:
                     await page.wait_for_selector('[data-widget="searchResultsV2"]', timeout=5000)
