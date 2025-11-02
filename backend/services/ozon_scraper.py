@@ -395,15 +395,17 @@ class OzonScraper:
     def _construct_product_url(self, article: str) -> str:
         """
         Сконструировать URL товара на OZON
-        
+
         Args:
             article: артикул товара
-            
+
         Returns:
-            URL для поиска товара
+            URL страницы товара
         """
-        # OZON search URL
-        return f"{self.base_url}/search/?text={quote(article)}"
+        # КРИТИЧНО: Используем прямую ссылку на товар, а не search
+        # /search/ имеет более жесткую защиту от ботов (403)
+        # /product/ более доступна и правильно парсится
+        return f"{self.base_url}/product/{article}/"
     
     # ==================== HTML Parsing ====================
     
