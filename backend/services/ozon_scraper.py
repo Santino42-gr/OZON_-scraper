@@ -669,7 +669,10 @@ class OzonScraper:
                 await asyncio.sleep(random.uniform(1.0, 3.0))
 
                 # Переходим на страницу
-                response = await page.goto(url, wait_until="domcontentloaded")
+                response = await page.goto(url, wait_until="domcontentloaded", timeout=20000)
+
+                # КРИТИЧЕСКИ ВАЖНО: задержка после загрузки (как в Telegram боте)
+                await asyncio.sleep(random.uniform(2.0, 3.0))
 
                 # Проверяем статус
                 if response.status != 200:
@@ -683,13 +686,29 @@ class OzonScraper:
 
                 # Имитация прокрутки страницы (человеческое поведение)
                 await page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
-                await asyncio.sleep(random.uniform(0.5, 1.5))
+                await asyncio.sleep(random.uniform(1.0, 2.0))
 
-                # Ждем загрузки контента (можно настроить селекторы)
-                try:
-                    await page.wait_for_selector('[data-widget="searchResultsV2"]', timeout=5000)
-                except:
-                    logger.warning(f"⚠️  Timeout waiting for search results for {article}")
+                # Ждем загрузки контента - используем множественные селекторы как в Telegram боте
+                selectors_to_wait = [
+                    "h1",  # Заголовок товара
+                    "[data-widget='webPrice']",  # Виджет цены
+                    "[data-widget='webDetailSKU']",  # Виджет товара
+                    ".widget-search-result-container",
+                    "div[data-widget*='web']",
+                ]
+
+                loaded = False
+                for selector in selectors_to_wait:
+                    try:
+                        await page.wait_for_selector(selector, timeout=5000)
+                        loaded = True
+                        logger.info(f"✅ Page loaded, found selector: {selector}")
+                        break
+                    except:
+                        continue
+
+                if not loaded:
+                    logger.warning(f"⚠️  No content selectors found for {article}, trying to parse anyway")
 
                 # Получаем HTML
                 html = await page.content()
@@ -701,8 +720,11 @@ class OzonScraper:
                     product.source = ScrapingSource.PLAYWRIGHT
                     self.stats["playwright_requests"] += 1
 
+                # Дополнительная задержка перед закрытием (имитация чтения)
+                await asyncio.sleep(random.uniform(0.5, 1.0))
+
                 return product
-                
+
             finally:
                 await page.close()
                 
