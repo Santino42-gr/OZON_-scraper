@@ -21,6 +21,7 @@ import uuid
 import traceback
 import random
 import re
+import json
 from typing import Optional, Dict, List, Any
 from datetime import datetime, timedelta
 from collections import deque
@@ -411,71 +412,106 @@ class OzonScraper:
     
     def _parse_product_from_html(self, html: str, article: str) -> Optional[ProductInfo]:
         """
-        Парсинг HTML страницы OZON для извлечения информации о товаре
-        
+        Парсинг HTML страницы ТОВАРА OZON (не поиска!)
+
+        Работает со страницей /product/ARTICLE/, не /search/
+
         Args:
             html: HTML контент страницы
             article: артикул товара
-            
+
         Returns:
             ProductInfo или None
         """
         try:
             soup = BeautifulSoup(html, 'html.parser')
-            
-            # Ищем первый результат поиска (обычно это наш товар)
-            search_results = soup.find_all('div', {'data-widget': 'searchResultsV2'})
-            if not search_results:
-                logger.warning(f"⚠️  No search results found for {article}")
-                return None
-            
-            # Ищем карточку товара
-            product_card = search_results[0].find('div', recursive=True)
-            if not product_card:
-                logger.warning(f"⚠️  No product card found for {article}")
-                return None
-            
+
             # === Парсинг названия товара ===
             name = None
-            name_elem = soup.find('span', class_=lambda x: x and 'tsBody500Medium' in x)
+            # Ищем H1 - заголовок товара
+            name_elem = soup.find('h1')
             if name_elem:
                 name = name_elem.get_text(strip=True)
-            
-            # === Парсинг цен ===
-            # 1. Обычная цена (без Ozon Card) - черный текст
+
+            if not name:
+                logger.warning(f"⚠️  No product title (h1) found for {article}")
+                return None
+
+            # === Парсинг цен через JSON (как в Telegram боте) ===
+            price = None
             normal_price = None
-            normal_price_elem = soup.find('span', {'data-widget': 'webPrice'})
-            if not normal_price_elem:
-                # Альтернативный селектор
-                normal_price_elem = soup.find('span', class_=lambda x: x and 'tsHeadline500Medium' in x)
-            
-            if normal_price_elem:
-                price_text = normal_price_elem.get_text(strip=True)
-                normal_price = self._parse_price_text(price_text)
-            
-            # 2. Цена с Ozon Card - фиолетовый текст
             ozon_card_price = None
-            ozon_card_elem = soup.find('span', {'data-widget': 'webOzonCardPrice'})
-            if not ozon_card_elem:
-                # Альтернативный селектор
-                ozon_card_elem = soup.find('span', class_=lambda x: x and 'ozonCard' in str(x).lower())
-            
-            if ozon_card_elem:
-                price_text = ozon_card_elem.get_text(strip=True)
-                ozon_card_price = self._parse_price_text(price_text)
-            
-            # 3. Старая цена (перечеркнутая)
             old_price = None
-            old_price_elem = soup.find('span', class_=lambda x: x and 'line-through' in str(x))
-            if not old_price_elem:
-                old_price_elem = soup.find('s')
-            
-            if old_price_elem:
-                price_text = old_price_elem.get_text(strip=True)
-                old_price = self._parse_price_text(price_text)
-            
+
+            # Метод 1: Ищем JSON в HTML (window.__INITIAL_STATE__)
+            json_patterns = [
+                r'window\.__INITIAL_STATE__\s*=\s*({.*?});',
+                r'<script[^>]*data-widget[^>]*>([^<]*)</script>',
+            ]
+
+            for pattern in json_patterns:
+                matches = re.findall(pattern, html, re.DOTALL)
+                for match in matches:
+                    try:
+                        if isinstance(match, str) and match.startswith('{'):
+                            data = json.loads(match)
+
+                            # Рекурсивно ищем price в JSON
+                            def find_price(obj):
+                                if isinstance(obj, dict):
+                                    for key, value in obj.items():
+                                        if key in ['price', 'currentPrice', 'finalPrice', 'amount'] and value:
+                                            if isinstance(value, (int, float)):
+                                                return float(value)
+                                            elif isinstance(value, str) and value.replace('.', '').replace(',', '').isdigit():
+                                                return float(value.replace(',', '.'))
+                                        if isinstance(value, (dict, list)):
+                                            result = find_price(value)
+                                            if result:
+                                                return result
+                                elif isinstance(obj, list):
+                                    for item in obj:
+                                        result = find_price(item)
+                                        if result:
+                                            return result
+                                return None
+
+                            found_price = find_price(data)
+                            if found_price:
+                                price = found_price
+                                normal_price = found_price
+                                break
+                    except:
+                        continue
+                if price:
+                    break
+
+            # Метод 2: Парсим через селекторы (как в Telegram боте)
+            if not price:
+                price_selectors = [
+                    {'data-widget': 'webPrice'},
+                    {'data-widget': 'price'},
+                ]
+
+                for selector in price_selectors:
+                    price_elem = soup.find('span', selector)
+                    if not price_elem:
+                        price_elem = soup.find('div', selector)
+
+                    if price_elem:
+                        price_text = price_elem.get_text(strip=True)
+                        # Regex как в Telegram боте
+                        price_match = re.search(r'(\d[\d\s]*)\s*[₽ррубRUB]', price_text.replace(',', ''))
+                        if price_match:
+                            price_str = price_match.group(1).replace(' ', '').replace('\u2009', '').replace('\xa0', '')
+                            if price_str.isdigit():
+                                price = float(price_str)
+                                normal_price = float(price_str)
+                                break
+
             # Определяем основную цену
-            price = ozon_card_price or normal_price
+            if not price:
+                price = normal_price
             
             # === Парсинг рейтинга ===
             rating = None
