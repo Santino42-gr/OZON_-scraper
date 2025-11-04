@@ -5,12 +5,9 @@ OZON Service
 Использует облачный сервис Parser Market для парсинга данных Ozon.
 """
 
-import asyncio
 import logging
 from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
 import httpx
-from bs4 import BeautifulSoup
 
 # Импортируем правильную модель ProductInfo
 from models.ozon_models import ProductInfo
