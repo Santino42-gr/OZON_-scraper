@@ -16,7 +16,7 @@ import httpx
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
 from models.ozon_models import (
     ProductInfo,
@@ -212,15 +212,17 @@ class ParserMarketClient:
         if not userlabel:
             userlabel = f"ozon_{article}_{int(datetime.now().timestamp())}"
 
-        # Формируем product для API
+        # Для Ozon используем marketid (SKU ID) вместо productid (артикул продавца)
+        # marketid - это SKU ID товара на маркетплейсе
+        # productid - это артикул продавца
         product = {
             "category": "",
             "code": 0.0,
-            "productid": article,
+            "productid": "",  # Пусто для Ozon при использовании marketid
             "brand": "",
             "name": f"Product {article}",  # Required field
             "linkset": [f"https://www.ozon.ru/product/{article}/"],
-            "marketid": "",
+            "marketid": str(article),  # Используем marketid для Ozon
             "price": 0.0,
             "donotsearch": "",
             "textsearch": ""
@@ -243,12 +245,16 @@ class ParserMarketClient:
             )
             response.raise_for_status()
 
-            result = self._parse_response(response.json())
+            response_data = response.json()
+            logger.debug(f"API response type: {type(response_data)} | data: {response_data}")
+            
+            result = self._parse_response(response_data)
 
-            if result.get("result") != "success":
-                error_code = result.get("error_code", "unknown")
+            if not result or result.get("result") != "success":
+                error_code = result.get("error_code", "unknown") if result else "unknown"
+                error_message = result.get("error_message", "") if result else ""
                 raise ParserMarketAPIError(
-                    f"Task submission failed: {error_code} | {result}"
+                    f"Task submission failed: {error_code} | {error_message} | Response: {result}"
                 )
 
             logger.info(
@@ -486,12 +492,43 @@ class ParserMarketClient:
         except ParserMarketTimeoutError:
             logger.error(f"Parsing timeout | article={article}")
             return None
-        except ParserMarketTaskError:
-            logger.error(f"Parsing task failed | article={article}")
+        except ParserMarketTaskError as e:
+            logger.error(f"Parsing task failed | article={article} | error={e}")
+            return None
+        except ParserMarketAPIError as e:
+            logger.error(f"Parser Market API error | article={article} | error={e}")
             return None
         except Exception as e:
             logger.error(f"Parsing failed | article={article} | error={e}", exc_info=True)
             return None
+
+    async def parse_marketid(
+        self,
+        article: str,
+        timeout: Optional[int] = None
+    ) -> Optional[ProductInfo]:
+        """
+        Парсинг товара используя метод marketid (SKU ID Ozon)
+
+        Явный метод для использования marketid вместо productid.
+        По умолчанию submit_task() уже использует marketid для Ozon,
+        но этот метод делает это явным.
+
+        Args:
+            article: SKU ID товара Ozon (marketid)
+            timeout: Максимальное время ожидания (по умолчанию self.timeout)
+
+        Returns:
+            ProductInfo или None если парсинг не удался
+
+        Example:
+            >>> client = ParserMarketClient(api_key="key")
+            >>> product = await client.parse_marketid("1066650955")
+            >>> print(product.price)
+        """
+        # Используем тот же метод parse_sync, так как submit_task()
+        # уже использует marketid по умолчанию для Ozon
+        return await self.parse_sync(article, timeout)
 
     async def parse_batch(
         self,
@@ -535,20 +572,27 @@ class ParserMarketClient:
 
     # ==================== Utility Methods ====================
 
-    def _parse_response(self, data: List[Dict]) -> Dict[str, Any]:
+    def _parse_response(self, data) -> Dict[str, Any]:
         """
         Преобразовать формат ответа Parser Market в dict
 
-        Parser Market возвращает список словарей:
-        [{"result": "success"}, {"user_id": "3"}, ...]
+        Parser Market может возвращать:
+        1. Список словарей: [{"result": "success"}, {"user_id": "3"}, ...]
+        2. Словарь напрямую: {"result": "success", "user_id": "3", ...}
 
         Преобразуем в единый словарь:
         {"result": "success", "user_id": "3", ...}
         """
-        result = {}
-        for item in data:
-            result.update(item)
-        return result
+        if isinstance(data, list):
+            result = {}
+            for item in data:
+                if isinstance(item, dict):
+                    result.update(item)
+            return result
+        elif isinstance(data, dict):
+            return data
+        else:
+            return {}
 
     def _get_field(self, task_list: List[Dict], field: str) -> Any:
         """
@@ -578,54 +622,149 @@ class ParserMarketClient:
             ProductInfo или None
 
         Note:
-            Структура отчета Parser Market может отличаться от текущей
-            Этот метод нужно будет адаптировать после получения примера отчета
+            Структура отчета Parser Market:
+            {
+                "data": [{
+                    "Name_found": "...",
+                    "Brand_found": "...",
+                    "offers": [{
+                        "Price": 1510.0,
+                        "PromoPrice": 1465.0,
+                        "OldPrice": 6990.0,
+                        "OZON_couponPrice": 0.0,
+                        "SkuRating": 4.8,
+                        "SkuRates": 9128,
+                        "Ozon_available": true,
+                        "ShopUrl": "...",
+                        "Offer_pics": [...]
+                    }]
+                }]
+            }
         """
         try:
-            # TODO: Адаптировать под реальную структуру Parser Market JSON
-            # Пока делаем базовый маппинг на основе предполагаемой структуры
+            # Проверяем наличие данных
+            if not report_data.get('data') or len(report_data['data']) == 0:
+                logger.warning(f"No data in report | article={article}")
+                return None
 
-            # Предполагаем что отчет содержит массив товаров
-            products = report_data.get("products", [])
-            if not products:
-                # Или может быть один товар в корне
-                product_data = report_data
-            else:
-                product_data = products[0]
+            item = report_data['data'][0]
 
-            # Маппинг полей (адаптировать под реальные поля!)
+            # Основная информация о товаре
+            name_found = item.get('Name_found', '')
+            brand_found = item.get('Brand_found', '')
+            category_found = item.get('Category_found', '')
+            rating_found = item.get('Rating_found', 0.0)
+            rates_found = item.get('Rates_found', 0)
+
+            # Проверяем ServiceData
+            service_data = item.get('ServiceData', {})
+            is_success = service_data.get('O_IsSuccess', False)
+            offers_count = item.get('Offers_counted', 0)
+
+            # Обрабатываем предложения (offers)
+            offers = item.get('offers', [])
+            valid_offers = []
+
+            for offer in offers:
+                if offer.get('Name') or offer.get('Price', 0) > 0:
+                    valid_offers.append(offer)
+
+            # Товар считается найденным, если:
+            # 1. Есть успешный результат в ServiceData ИЛИ
+            # 2. Найдено предложений > 0 ИЛИ
+            # 3. Есть валидные предложения
+            found = is_success or offers_count > 0 or len(valid_offers) > 0
+
+            if not found:
+                logger.warning(f"Product not found | article={article}")
+                return None
+
+            # Выбираем лучшее предложение (с минимальной ценой или первое валидное)
+            main_offer = None
+            if valid_offers:
+                offers_with_price = [o for o in valid_offers if o.get('Price', 0) > 0]
+                if offers_with_price:
+                    main_offer = min(offers_with_price, key=lambda x: x.get('Price', float('inf')))
+                else:
+                    main_offer = valid_offers[0]
+
+            if not main_offer:
+                logger.warning(f"No valid offers found | article={article}")
+                return None
+
+            # Извлекаем данные из основного предложения
+            price = self._parse_float(main_offer.get('Price'))
+            promo_price = self._parse_float(main_offer.get('PromoPrice'))
+            old_price = self._parse_float(main_offer.get('OldPrice'))
+            ozon_card_price = self._parse_float(main_offer.get('OZON_couponPrice'))
+            sku_rating = self._parse_float(main_offer.get('SkuRating'))
+            sku_rates = self._parse_int(main_offer.get('SkuRates'))
+            ozon_available = main_offer.get('Ozon_available', False)
+            shop_url = main_offer.get('ShopUrl', '')
+            offer_pics = main_offer.get('Offer_pics', [])
+            shop_name = main_offer.get('ShopName', '')
+
+            # Определяем наличие товара
+            availability = ProductAvailability.AVAILABLE if ozon_available else ProductAvailability.OUT_OF_STOCK
+
+            # Используем рейтинг из основного предложения, если есть, иначе из корня
+            final_rating = sku_rating if sku_rating else rating_found
+            final_reviews_count = sku_rates if sku_rates else rates_found
+
+            # Формируем URL
+            product_url = shop_url if shop_url else f"https://www.ozon.ru/product/{article}/"
+
+            # Извлекаем изображения (валидируем через HttpUrl)
+            images = []
+            image_url = None
+            if offer_pics and len(offer_pics) > 0:
+                for img in offer_pics:
+                    if img:
+                        try:
+                            images.append(HttpUrl(img))
+                        except Exception:
+                            logger.debug(f"Invalid image URL: {img}")
+                image_url = images[0] if images else None
+
+            # Создаем ProductInfo
             product_info = ProductInfo(
                 article=article,
-                name=product_data.get("name") or product_data.get("title"),
+                name=name_found or main_offer.get('Name', ''),
 
                 # Цены
-                price=self._parse_float(product_data.get("price")),
-                normal_price=self._parse_float(product_data.get("normal_price")),
-                ozon_card_price=self._parse_float(product_data.get("ozon_card_price")),
-                old_price=self._parse_float(product_data.get("old_price")),
+                price=price,
+                normal_price=price,  # Основная цена без скидок
+                ozon_card_price=ozon_card_price if ozon_card_price else promo_price,  # Используем promo_price если нет ozon_card_price
+                old_price=old_price,
 
                 # Рейтинг
-                rating=self._parse_float(product_data.get("rating")),
-                reviews_count=self._parse_int(product_data.get("reviews_count")),
+                rating=final_rating,
+                reviews_count=final_reviews_count,
 
                 # Наличие
-                availability=self._parse_availability(product_data.get("availability")),
+                availability=availability,
+                stock_count=self._parse_int(main_offer.get('Ozon_stockcount')),
 
                 # Изображения и ссылки
-                image_url=product_data.get("image_url") or product_data.get("image"),
-                url=product_data.get("url") or f"https://www.ozon.ru/product/{article}/",
+                image_url=image_url,
+                images=images,
+                url=HttpUrl(product_url) if product_url else HttpUrl(f"https://www.ozon.ru/product/{article}/"),
                 product_id=article,
 
                 # Дополнительно
-                brand=product_data.get("brand"),
-                seller_name=product_data.get("seller") or product_data.get("seller_name"),
+                brand=brand_found or main_offer.get('Brand_found', ''),
+                category=category_found,
+                seller_name=shop_name,
 
                 # Метаданные
                 last_check=datetime.now(),
                 source=ScrapingSource.MANUAL  # API source
             )
 
-            logger.debug(f"Report parsed | article={article} | name={product_info.name}")
+            logger.debug(
+                f"Report parsed | article={article} | name={product_info.name} | "
+                f"price={product_info.price} | rating={product_info.rating}"
+            )
 
             return product_info
 

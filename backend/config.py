@@ -59,7 +59,8 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
     class Config:
-        env_file = "../.env"
+        env_file = ".env"  # Ищем .env в текущей директории (backend/) или родительской
+        env_file_encoding = "utf-8"
         case_sensitive = True
         extra = "ignore"  # Игнорировать дополнительные поля из .env
 
