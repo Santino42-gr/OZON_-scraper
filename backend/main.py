@@ -32,12 +32,16 @@ logger.add(
     format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>",
     level=settings.LOG_LEVEL
 )
-logger.add(
-    settings.LOG_FILE,
-    rotation="1 day",
-    retention="7 days",
-    level=settings.LOG_LEVEL
-)
+# Добавляем файловый логгер с обработкой ошибок
+try:
+    logger.add(
+        settings.LOG_FILE,
+        rotation="1 day",
+        retention="7 days",
+        level=settings.LOG_LEVEL
+    )
+except Exception as e:
+    logger.warning(f"Failed to setup file logging: {e}")
 
 # Создаем приложение FastAPI
 app = FastAPI(

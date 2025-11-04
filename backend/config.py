@@ -59,12 +59,24 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
     class Config:
-        env_file = ".env"  # Ищем .env в текущей директории (backend/) или родительской
+        # Docker Compose передает переменные через env_file, они доступны в окружении
+        # Локально ищем .env файл
+        env_file = [".env", "../.env"]  # Пробуем оба варианта
         env_file_encoding = "utf-8"
         case_sensitive = True
         extra = "ignore"  # Игнорировать дополнительные поля из .env
+        # pydantic-settings автоматически читает из переменных окружения, даже если нет файла
 
 
-# Создаем глобальный экземпляр настроек
-settings = Settings()
+# Создаем глобальный экземпляр настроек с обработкой ошибок
+try:
+    settings = Settings()
+except Exception as e:
+    import sys
+    print(f"ERROR: Failed to load settings: {e}")
+    print("Please check that .env file exists and contains all required variables:")
+    print("  - SUPABASE_URL")
+    print("  - SUPABASE_SERVICE_ROLE_KEY")
+    print("  - PARSER_MARKET_API_KEY")
+    sys.exit(1)
 
