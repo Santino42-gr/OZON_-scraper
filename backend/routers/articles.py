@@ -62,6 +62,10 @@ async def create_article(article: ArticleCreate):
         )
         
         # Сохраняем в БД
+        # Конвертируем HttpUrl объекты в строки для сериализации
+        image_url_str = str(product_info.image_url) if product_info.image_url else None
+        product_url_str = str(product_info.url) if product_info.url else None
+        
         data = {
             "article_number": article.article_number,
             "user_id": article.user_id,
@@ -77,8 +81,8 @@ async def create_article(article: ArticleCreate):
             "rating": product_info.rating,
             "reviews_count": product_info.reviews_count,
             "available": product_info.available,
-            "image_url": product_info.image_url,
-            "product_url": product_info.url,
+            "image_url": image_url_str,
+            "product_url": product_url_str,
             "status": "active",
             "last_check": datetime.now().isoformat(),
             "price_updated_at": datetime.now().isoformat()
@@ -293,6 +297,10 @@ async def check_article(article_id: str):
             )
         
         # Обновляем данные в БД
+        # Конвертируем HttpUrl объекты в строки для сериализации
+        image_url_str = str(product_info.image_url) if product_info.image_url else None
+        product_url_str = str(product_info.url) if product_info.url else None
+        
         update_data = {
             "name": product_info.name,
             "price": product_info.price,
@@ -300,8 +308,8 @@ async def check_article(article_id: str):
             "rating": product_info.rating,
             "reviews_count": product_info.reviews_count,
             "available": product_info.available,
-            "image_url": product_info.image_url,
-            "product_url": product_info.url,
+            "image_url": image_url_str,
+            "product_url": product_url_str,
             "last_check": checked_at.isoformat(),
             "updated_at": checked_at.isoformat()
         }
@@ -323,8 +331,8 @@ async def check_article(article_id: str):
                 "rating": product_info.rating,
                 "reviews_count": product_info.reviews_count,
                 "available": product_info.available,
-                "image_url": product_info.image_url,
-                "product_url": product_info.url
+                "image_url": image_url_str,
+                "product_url": product_url_str
             }
         )
         
