@@ -49,15 +49,10 @@ flake8==7.1.1
 mypy==1.11.2
 isort==5.13.2
 
-# OZON Integration (Web Scraping)
-playwright==1.48.0
-beautifulsoup4==4.12.3
-lxml==5.3.0
-fake-useragent==1.5.1
+# OZON Integration (Parser Market API)
+# All scraping handled by Parser Market cloud service
+# No need for Playwright, BeautifulSoup, or other scraping libraries
 
 # Reports & Export
 openpyxl==3.1.5  # Excel export
-
-# Selenium (альтернатива Playwright, опционально)
-# selenium==4.25.0
 

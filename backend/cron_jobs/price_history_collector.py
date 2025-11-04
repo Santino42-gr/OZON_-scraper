@@ -1,7 +1,7 @@
 """
 Price History Collector - Cron Job
 
-Автоматический сбор истории цен товаров OZON через web scraping.
+Автоматический сбор истории цен товаров OZON через Parser Market API.
 
 Запуск: Каждые 24 часа (настраивается)
 Цель: Собрать цены всех отслеживаемых артикулов и сохранить в БД
@@ -9,12 +9,13 @@ Price History Collector - Cron Job
 
 Usage:
     python -m cron_jobs.price_history_collector
-    
+
 Environment Variables:
     SUPABASE_URL - URL Supabase проекта
     SUPABASE_SERVICE_ROLE_KEY - Service role ключ для записи в БД
+    PARSER_MARKET_API_KEY - API ключ Parser Market
     OZON_SCRAPER_BATCH_SIZE - Размер batch для scraping (default: 10)
-    OZON_SCRAPER_DELAY - Задержка между артикулами в секундах (default: 5)
+    OZON_SCRAPER_DELAY - Задержка между артикулами в секундах (default: 2)
 """
 
 import asyncio
@@ -29,7 +30,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from loguru import logger
 from database import get_supabase_client
-from services.ozon_scraper import OzonScraper  # TODO: будет создан в следующей задаче
+from services.parser_market_client import ParserMarketClient
+from services.spp_calculator import calculate_spp_metrics
 from config import settings
 
 
@@ -44,7 +46,7 @@ class PriceHistoryCollector:
     4. Логировать результаты и ошибки
     """
     
-    def __init__(self, batch_size: int = 10, delay_seconds: int = 5):
+    def __init__(self, batch_size: int = 10, delay_seconds: int = 2):
         """
         Args:
             batch_size: Количество артикулов в одном batch
@@ -52,9 +54,9 @@ class PriceHistoryCollector:
         """
         self.batch_size = batch_size
         self.delay_seconds = delay_seconds
-        self.scraper = None
+        self.client = None
         self.supabase = get_supabase_client()
-        
+
         # Статистика выполнения
         self.stats = {
             "total_articles": 0,
@@ -65,20 +67,21 @@ class PriceHistoryCollector:
             "end_time": None,
             "errors": []
         }
-    
+
     async def initialize(self):
-        """Инициализация scraper"""
-        self.scraper = OzonScraper(
-            cache_ttl=0,  # Не используем кэш для cron job
-            rate_limit=10,
-            timeout=30
+        """Инициализация Parser Market client"""
+        self.client = ParserMarketClient(
+            api_key=settings.PARSER_MARKET_API_KEY,
+            region=settings.PARSER_MARKET_REGION,
+            timeout=settings.PARSER_MARKET_TIMEOUT,
+            poll_interval=settings.PARSER_MARKET_POLL_INTERVAL
         )
-        logger.info("OzonScraper initialized for cron job")
-    
+        logger.info("Parser Market client initialized for cron job")
+
     async def cleanup(self):
         """Очистка ресурсов"""
-        if self.scraper:
-            await self.scraper.close()
+        if self.client:
+            await self.client.close()
         logger.info("Resources cleaned up")
     
     def get_all_articles(self) -> List[str]:
@@ -106,30 +109,30 @@ class PriceHistoryCollector:
     
     async def scrape_article_price(self, article: str) -> Dict[str, Any]:
         """
-        Scrape цену для одного артикула
-        
+        Получить цену товара через Parser Market API
+
         Args:
             article: Артикул товара
-            
+
         Returns:
             Словарь с данными о ценах или None при ошибке
         """
         try:
-            # Используем OzonScraper для получения цен
-            product_info = await self.scraper.get_product_prices_detailed(article)
-            
+            # Используем Parser Market API для получения данных
+            product_info = await self.client.parse_sync(article)
+
             if not product_info:
                 logger.warning(f"No data found for article: {article}")
                 return None
-            
-            # Рассчитываем СПП метрики (используем прямой доступ к атрибутам Pydantic модели)
-            spp_metrics = OzonScraper.calculate_spp_metrics(
+
+            # Рассчитываем СПП метрики
+            spp_metrics = calculate_spp_metrics(
                 product_info.average_price_7days,
                 product_info.normal_price,
                 product_info.ozon_card_price
             )
 
-            # Формируем данные для записи в БД (прямой доступ к атрибутам Pydantic модели)
+            # Формируем данные для записи в БД
             price_data = {
                 "article_number": article,
                 "price": product_info.price,
@@ -139,23 +142,23 @@ class PriceHistoryCollector:
                 "spp1": spp_metrics["spp1"],
                 "spp2": spp_metrics["spp2"],
                 "spp_total": spp_metrics["spp_total"],
-                "product_available": True,  # ProductPriceDetailed не имеет поля available
-                "rating": None,  # ProductPriceDetailed не имеет поля rating
-                "reviews_count": None,  # ProductPriceDetailed не имеет поля reviews_count
-                "source": "cron_scraping",
+                "product_available": product_info.available,
+                "rating": product_info.rating,
+                "reviews_count": product_info.reviews_count,
+                "source": "parser_market_api",
                 "scraping_success": True,
-                "scraping_duration_ms": None,  # ProductPriceDetailed не имеет поля fetch_time_ms
+                "scraping_duration_ms": product_info.fetch_time_ms,
                 "price_date": datetime.now().isoformat()
             }
-            
+
             logger.info(
-                f"✅ Successfully scraped {article}: price={price_data['price']}, "
+                f"✅ Successfully parsed {article}: price={price_data['price']}, "
                 f"spp_total={spp_metrics['spp_total']}"
             )
             return price_data
-            
+
         except Exception as e:
-            logger.error(f"❌ Failed to scrape {article}: {e}")
+            logger.error(f"❌ Failed to parse {article}: {e}")
             self.stats["errors"].append({
                 "article": article,
                 "error": str(e),

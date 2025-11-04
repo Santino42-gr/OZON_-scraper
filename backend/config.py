@@ -42,9 +42,12 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "logs/backend.log"
 
-    # Playwright (Web Scraping)
-    PLAYWRIGHT_HEADLESS: bool = True
-    PLAYWRIGHT_TIMEOUT: int = 30000
+    # Parser Market API (Web Scraping)
+    PARSER_MARKET_API_KEY: str
+    PARSER_MARKET_REGION: str = "Москва"
+    PARSER_MARKET_TIMEOUT: int = 120  # Timeout for task completion (seconds)
+    PARSER_MARKET_POLL_INTERVAL: int = 10  # Polling interval (seconds)
+    PARSER_MARKET_MAX_RETRIES: int = 3
 
     # Redis (optional)
     REDIS_URL: Optional[str] = None

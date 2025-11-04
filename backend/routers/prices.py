@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 
 from database import get_supabase_client
-from services.ozon_scraper import get_ozon_scraper
+from services.ozon_service import get_ozon_service
 from models.ozon_models import ProductPriceDetailed, PriceHistory, PriceHistoryStats
 from loguru import logger
 
@@ -353,12 +353,11 @@ async def refresh_article_prices(article_id: str):
         article = response.data[0]
         article_number = article["article_number"]
         
-        # Получаем свежие данные через scraper
-        scraper = get_ozon_scraper()
-        product_info = await scraper.get_product_info(
+        # Получаем свежие данные через Parser Market API
+        ozon_service = get_ozon_service()
+        product_info = await ozon_service.get_product_info(
             article_number,
-            use_cache=False,  # Не используем кэш для обновления
-            force_playwright=False
+            use_cache=False  # Не используем кэш для обновления
         )
         
         if not product_info:

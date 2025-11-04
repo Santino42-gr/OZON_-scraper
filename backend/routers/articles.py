@@ -54,8 +54,8 @@ async def create_article(article: ArticleCreate):
         
         # Рассчитываем СПП метрики
         # Note: average_price_7days будет None для новых артикулов (нет истории)
-        from services.ozon_scraper import OzonScraper
-        spp_metrics = OzonScraper.calculate_spp_metrics(
+        from services.spp_calculator import calculate_spp_metrics
+        spp_metrics = calculate_spp_metrics(
             product_info.average_price_7days,
             product_info.normal_price,
             product_info.ozon_card_price

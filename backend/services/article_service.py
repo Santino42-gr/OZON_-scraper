@@ -27,7 +27,7 @@ from models.article import (
     ArticleUpdate,
     ArticleCheckResponse
 )
-from services.ozon_scraper import get_ozon_scraper
+from services.ozon_service import get_ozon_service
 
 
 # ==================== Exceptions ====================
@@ -66,7 +66,7 @@ class ArticleService:
     def __init__(self):
         """Инициализация сервиса"""
         self.supabase = get_supabase_client()
-        self.ozon_scraper = get_ozon_scraper()
+        self.ozon_service = get_ozon_service()
         logger.info("✅ ArticleService initialized")
     
     # ==================== Логирование ====================
@@ -197,7 +197,7 @@ class ArticleService:
             if fetch_data:
                 try:
                     logger.info(f"🔍 Fetching data from OZON for {article_number}")
-                    product = await self.ozon_scraper.get_product_info(article_number)
+                    product = await self.ozon_service.get_product_info(article_number)
                     
                     if product:
                         last_check_data = product.to_dict()
@@ -400,7 +400,7 @@ class ArticleService:
             
             # Получаем свежие данные с OZON
             try:
-                product = await self.ozon_scraper.get_product_info(article_number, use_cache=False)
+                product = await self.ozon_service.get_product_info(article_number, use_cache=False)
                 
                 if product:
                     last_check_data = product.to_dict()
@@ -500,7 +500,7 @@ class ArticleService:
             logger.info(f"🔍 Checking article status: {article_number}")
             
             # Получаем данные с OZON (без кэша)
-            product = await self.ozon_scraper.get_product_info(article_number, use_cache=False)
+            product = await self.ozon_service.get_product_info(article_number, use_cache=False)
             
             if not product:
                 return ArticleCheckResponse(

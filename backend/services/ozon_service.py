@@ -1,8 +1,8 @@
 """
 OZON Service
-Сервис для получения информации о товарах OZON через web scraping.
+Сервис для получения информации о товарах OZON через Parser Market API.
 
-Использует Playwright для обхода антибот систем и получения динамического контента.
+Использует облачный сервис Parser Market для парсинга данных Ozon.
 """
 
 import asyncio
@@ -66,17 +66,17 @@ class OzonService:
 
         Args:
             article: артикул товара OZON
-            use_cache: использовать кеш
+            use_cache: использовать кеш (игнорируется для Parser Market API)
 
         Returns:
             ProductInfo (from models.ozon_models) или None если товар не найден
         """
-        # Используем реальный OzonScraper вместо заглушки
-        from services.ozon_scraper import get_ozon_scraper
+        # Используем Parser Market API вместо Playwright scraper
+        from services.parser_market_client import get_parser_market_client
 
         try:
-            scraper = get_ozon_scraper()
-            product = await scraper.get_product_info(article, use_cache=use_cache)
+            client = get_parser_market_client()
+            product = await client.parse_sync(article)
 
             if product:
                 logger.info(f"✅ Product found: {article} - {product.name}")
@@ -130,49 +130,8 @@ class OzonService:
         logger.warning(f"Search for '{query}' - Implementation pending")
         return []
 
-    async def get_product_with_playwright(self, article: str) -> Optional[ProductInfo]:
-        """
-        Получить информацию о товаре используя Playwright
-        Для обхода антибот систем
-        
-        Args:
-            article: артикул товара
-            
-        Returns:
-            ProductInfo или None
-        """
-        # TODO: Реализовать с Playwright после установки библиотеки
-        logger.warning("Playwright implementation pending")
-        return None
-
-    async def get_product_with_httpx(self, article: str) -> Optional[ProductInfo]:
-        """
-        Получить информацию о товаре используя httpx (легковесный метод)
-        Fallback если Playwright недоступен
-        
-        Args:
-            article: артикул товара
-            
-        Returns:
-            ProductInfo или None
-        """
-        try:
-            url = self._construct_product_url(article)
-            response = await self.client.get(url)
-            response.raise_for_status()
-            
-            # Парсинг HTML
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # TODO: Реализовать парсинг элементов страницы
-            # Это требует анализа структуры HTML OZON
-            
-            logger.warning("httpx parsing implementation pending")
-            return None
-
-        except Exception as e:
-            logger.error(f"Error fetching with httpx: {e}")
-            return None
+    # Удалены методы get_product_with_playwright и get_product_with_httpx
+    # Теперь используется только Parser Market API через get_product_info()
 
 
 # Singleton instance
