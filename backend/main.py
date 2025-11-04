@@ -133,10 +133,17 @@ async def health_check():
     Health check endpoint
     
     Проверяет состояние сервиса и подключения к БД
+    Всегда возвращает 200 для Docker healthcheck
     """
-    from database import check_database_connection
-    
-    db_healthy = await check_database_connection()
+    try:
+        from database import check_database_connection
+        db_healthy = await check_database_connection()
+    except Exception as e:
+        # Логируем ошибку, но не падаем
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Database health check failed: {e}")
+        db_healthy = False
     
     return {
         "status": "healthy" if db_healthy else "degraded",
