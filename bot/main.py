@@ -25,7 +25,7 @@ from loguru import logger
 from config import settings
 from utils import logger as bot_logger  # Инициализируем logger
 from services.api_client import get_api_client
-from handlers import start, help as help_handler, onboarding, articles, reports, stats, common
+from handlers import start, help as help_handler, onboarding, articles, comparison, reports, stats, common
 from middlewares import ThrottlingMiddleware, LoggingMiddleware, UserActivityMiddleware
 
 
@@ -196,11 +196,12 @@ async def main():
     dp.include_router(help_handler.router)
     dp.include_router(onboarding.router)
     dp.include_router(articles.router)
+    dp.include_router(comparison.router)
     dp.include_router(reports.router)
     dp.include_router(stats.router)
     dp.include_router(common.router)  # common должен быть последним (fallback)
-    
-    logger.info("✅ Routers registered: 7 total")
+
+    logger.info("✅ Routers registered: 8 total")
     
     # Выбираем режим работы
     if settings.USE_WEBHOOK:

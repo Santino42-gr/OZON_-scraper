@@ -273,7 +273,40 @@ class BackendAPIClient:
             "GET",
             f"/api/v1/articles/{article_id}/check"
         )
-    
+
+    # ==================== Comparison ====================
+
+    async def quick_compare(
+        self,
+        user_id: str,
+        own_article_number: str,
+        competitor_article_number: str,
+        group_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Быстрое сравнение своего артикула с конкурентом
+
+        Args:
+            user_id: UUID пользователя
+            own_article_number: Артикул своего товара
+            competitor_article_number: Артикул конкурента
+            group_name: Название группы сравнения (опционально)
+
+        Returns:
+            Результат сравнения с метриками
+        """
+        return await self._request(
+            "POST",
+            "/api/v1/comparison/quick-compare",
+            params={"user_id": user_id},
+            json={
+                "own_article_number": own_article_number,
+                "competitor_article_number": competitor_article_number,
+                "group_name": group_name,
+                "scrape_now": True
+            }
+        )
+
     # ==================== Reports ====================
     
     async def generate_article_report(

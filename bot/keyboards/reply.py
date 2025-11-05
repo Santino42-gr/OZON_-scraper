@@ -11,29 +11,30 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder
 def get_main_menu() -> ReplyKeyboardMarkup:
     """
     Главное меню бота
-    
+
     Returns:
         ReplyKeyboardMarkup с основными командами
     """
     builder = ReplyKeyboardBuilder()
-    
+
     # Первая строка
     builder.row(
         KeyboardButton(text="📦 Мои артикулы"),
         KeyboardButton(text="➕ Добавить артикул")
     )
-    
+
     # Вторая строка
     builder.row(
-        KeyboardButton(text="📊 Статистика"),
-        KeyboardButton(text="⚙️ Настройки")
+        KeyboardButton(text="⚖️ Сравнить товары"),
+        KeyboardButton(text="📊 Статистика")
     )
-    
+
     # Третья строка
     builder.row(
+        KeyboardButton(text="⚙️ Настройки"),
         KeyboardButton(text="ℹ️ Помощь")
     )
-    
+
     return builder.as_markup(
         resize_keyboard=True,
         input_field_placeholder="Выберите действие..."
