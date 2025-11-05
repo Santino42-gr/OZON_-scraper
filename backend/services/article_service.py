@@ -193,6 +193,7 @@ class ArticleService:
             last_check_data = None
             status = "active"
             is_problematic = False
+            product = None
             
             if fetch_data:
                 try:
@@ -222,7 +223,19 @@ class ArticleService:
                         "checked_at": datetime.now().isoformat()
                     }
             
-            # Создаем запись в БД
+            # Рассчитываем СПП метрики если есть данные
+            from services.spp_calculator import calculate_spp_metrics
+            spp_metrics = calculate_spp_metrics(
+                product.average_price_7days if product else None,
+                product.normal_price if product else None,
+                product.ozon_card_price if product else None
+            ) if product else {"spp1": None, "spp2": None, "spp_total": None}
+            
+            # Преобразуем HttpUrl в строки для сохранения
+            image_url_str = str(product.image_url) if product and product.image_url else None
+            product_url_str = str(product.url) if product and product.url else None
+            
+            # Создаем запись в БД с заполнением всех полей
             article_data = {
                 "user_id": user_id,
                 "article_number": article_number,
@@ -230,7 +243,24 @@ class ArticleService:
                 "last_check_data": last_check_data,
                 "is_problematic": is_problematic,
                 "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat()
+                "updated_at": datetime.now().isoformat(),
+                # Заполняем отдельные поля из product если данные получены
+                "name": product.name if product else None,
+                "price": product.price if product else None,
+                "old_price": product.old_price if product else None,
+                "normal_price": product.normal_price if product else None,
+                "ozon_card_price": product.ozon_card_price if product else None,
+                "average_price_7days": product.average_price_7days if product else None,
+                "rating": product.rating if product else None,
+                "reviews_count": product.reviews_count if product else None,
+                "available": product.available if product else True,
+                "image_url": image_url_str,
+                "product_url": product_url_str,
+                "spp1": spp_metrics.get("spp1"),
+                "spp2": spp_metrics.get("spp2"),
+                "spp_total": spp_metrics.get("spp_total"),
+                "last_check": datetime.now().isoformat() if product else None,
+                "price_updated_at": datetime.now().isoformat() if product else None
             }
             
             result = self.supabase.table("ozon_scraper_articles").insert(

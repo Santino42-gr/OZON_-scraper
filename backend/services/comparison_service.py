@@ -906,8 +906,36 @@ class ComparisonService:
                 .execute()
 
             if result.data and len(result.data) > 0:
+                existing_article = result.data[0]
                 logger.info(f"Article {article_number} already exists")
-                return result.data[0]
+                
+                # Если нужно обновить данные и артикул не имеет цен, обновляем
+                if scrape:
+                    # Проверяем, есть ли данные о ценах
+                    has_price_data = (
+                        existing_article.get("normal_price") or 
+                        existing_article.get("ozon_card_price") or 
+                        existing_article.get("price")
+                    )
+                    
+                    # Если данных нет или они старые, обновляем
+                    if not has_price_data:
+                        logger.info(f"Article {article_number} exists but has no price data, updating...")
+                        try:
+                            # Используем check_article для обновления данных
+                            updated = await self.article_service.check_article(existing_article["id"])
+                            if updated:
+                                # Получаем обновленный артикул
+                                result = self.supabase.table("ozon_scraper_articles") \
+                                    .select("*") \
+                                    .eq("id", existing_article["id"]) \
+                                    .execute()
+                                if result.data:
+                                    return result.data[0]
+                        except Exception as update_error:
+                            logger.warning(f"Failed to update article {article_number}: {update_error}")
+                
+                return existing_article
 
             # Создаем новый
             logger.info(f"Creating new article {article_number}")
@@ -917,7 +945,18 @@ class ComparisonService:
                 fetch_data=scrape
             )
 
-            return article
+            # Если article это dict, возвращаем как есть, иначе преобразуем
+            if isinstance(article, dict):
+                return article
+            else:
+                # Если это объект Pydantic, получаем из БД
+                result = self.supabase.table("ozon_scraper_articles") \
+                    .select("*") \
+                    .eq("id", article.id) \
+                    .execute()
+                if result.data:
+                    return result.data[0]
+                return article
 
         except Exception as e:
             # Если возникла ошибка duplicate key, значит артикул уже существует

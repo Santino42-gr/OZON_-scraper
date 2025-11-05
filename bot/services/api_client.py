@@ -247,9 +247,12 @@ class BackendAPIClient:
         """Получить артикулы пользователя"""
         response = await self._request(
             "GET",
-            f"/api/v1/articles/user/{user_id}",
-            params={"limit": limit, "offset": offset}
+            "/api/v1/articles/",
+            params={"user_id": user_id, "limit": limit, "offset": offset}
         )
+        # Ответ может быть списком напрямую или объектом с полем articles
+        if isinstance(response, list):
+            return response
         return response.get("articles", [])
     
     async def delete_article(self, article_id: str, user_id: str) -> Dict[str, Any]:

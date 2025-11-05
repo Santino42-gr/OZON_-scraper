@@ -196,14 +196,15 @@ async def process_add_article(message: Message, article_number: str, state: FSMC
             # Если артикул уже существует, получаем его и показываем информацию
             try:
                 # Получаем список артикулов пользователя
-                articles = await api_client.get_user_articles(user_id=user_id)
+                articles = await api_client.get_user_articles(user_id=user_id, limit=100)
                 
                 # Ищем нужный артикул
                 existing_article = None
-                for article in articles:
-                    if article.get("article_number") == article_number:
-                        existing_article = article
-                        break
+                if articles:
+                    for article in articles:
+                        if article.get("article_number") == article_number:
+                            existing_article = article
+                            break
                 
                 if existing_article:
                     # Показываем информацию о существующем артикуле
@@ -227,9 +228,20 @@ async def process_add_article(message: Message, article_number: str, state: FSMC
                         reply_markup=get_main_menu(),
                         parse_mode="HTML"
                     )
-            except Exception as fetch_error:
-                # Если не удалось получить артикул, показываем обычное сообщение
+            except APIError as fetch_error:
+                # Если не удалось получить артикул (404 или другая ошибка API), показываем обычное сообщение
                 logger.warning(f"Failed to fetch existing article: {fetch_error}")
+                error_text = "Этот артикул уже добавлен"
+                details = "Проверьте список своих артикулов с помощью /list"
+                
+                await message.answer(
+                    text=format_error(error_text, details),
+                    reply_markup=get_main_menu(),
+                    parse_mode="HTML"
+                )
+            except Exception as fetch_error:
+                # Если произошла другая ошибка, логируем и показываем сообщение
+                logger.error(f"Unexpected error fetching existing article: {fetch_error}")
                 error_text = "Этот артикул уже добавлен"
                 details = "Проверьте список своих артикулов с помощью /list"
                 
