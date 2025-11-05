@@ -1,0 +1,94 @@
+{
+  "passed": 6,
+  "failed": 5,
+  "errors": [
+    {
+      "test": "CORS Headers Configuration",
+      "details": "CORS headers not properly configured"
+    },
+    {
+      "test": "Create Article Endpoint",
+      "details": "HTTP 404: {\"error\":\"Товар не найден в OZON\",\"status_code\":404,\"timestamp\":\"2025-11-05T16:21:31.278316\",\"path\":\"/api/v1/articles/\"}"
+    },
+    {
+      "test": "Fetch Article Data (OZON API)",
+      "details": "HTTP 405: {\"error\":\"Method Not Allowed\",\"status_code\":405,\"timestamp\":\"2025-11-05T16:21:31.288014\",\"path\":\"/api/v1/articles/fetch\"}"
+    },
+    {
+      "test": "Price Calculation Logic",
+      "details": "HTTP 405"
+    },
+    {
+      "test": "SPP Calculation",
+      "details": "HTTP 405"
+    }
+  ],
+  "details": [
+    {
+      "test": "Backend API Health Check",
+      "status": "PASS",
+      "details": "Service: backend-api, Version: 1.0.0",
+      "timestamp": "2025-11-05T16:21:27.100030"
+    },
+    {
+      "test": "API Documentation (Swagger)",
+      "status": "PASS",
+      "details": "Swagger UI accessible",
+      "timestamp": "2025-11-05T16:21:27.101307"
+    },
+    {
+      "test": "Database Connection (via Health)",
+      "status": "PASS",
+      "details": "Database connected",
+      "timestamp": "2025-11-05T16:21:27.274963"
+    },
+    {
+      "test": "CORS Headers Configuration",
+      "status": "FAIL",
+      "details": "CORS headers not properly configured",
+      "timestamp": "2025-11-05T16:21:27.286350"
+    },
+    {
+      "test": "User Registration Endpoint",
+      "status": "PASS",
+      "details": "User ID: e55207ae-6f2a-47b7-8052-9c39ab6a6b25",
+      "timestamp": "2025-11-05T16:21:27.629515"
+    },
+    {
+      "test": "Get Articles Endpoint",
+      "status": "PASS",
+      "details": "Retrieved 4 articles",
+      "timestamp": "2025-11-05T16:21:27.794463"
+    },
+    {
+      "test": "Create Article Endpoint",
+      "status": "FAIL",
+      "details": "HTTP 404: {\"error\":\"Товар не найден в OZON\",\"status_code\":404,\"timestamp\":\"2025-11-05T16:21:31.278316\",\"path\":\"/api/v1/articles/\"}",
+      "timestamp": "2025-11-05T16:21:31.284175"
+    },
+    {
+      "test": "Fetch Article Data (OZON API)",
+      "status": "FAIL",
+      "details": "HTTP 405: {\"error\":\"Method Not Allowed\",\"status_code\":405,\"timestamp\":\"2025-11-05T16:21:31.288014\",\"path\":\"/api/v1/articles/fetch\"}",
+      "timestamp": "2025-11-05T16:21:31.288493"
+    },
+    {
+      "test": "Price Calculation Logic",
+      "status": "FAIL",
+      "details": "HTTP 405",
+      "timestamp": "2025-11-05T16:21:31.289201"
+    },
+    {
+      "test": "SPP Calculation",
+      "status": "FAIL",
+      "details": "HTTP 405",
+      "timestamp": "2025-11-05T16:21:31.293876"
+    },
+    {
+      "test": "Error Handling (Invalid Article)",
+      "status": "PASS",
+      "details": "Error handled gracefully",
+      "timestamp": "2025-11-05T16:21:31.295101"
+    }
+  ]
+}
