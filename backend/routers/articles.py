@@ -66,6 +66,16 @@ async def create_article(article: ArticleCreate):
         image_url_str = str(product_info.image_url) if product_info.image_url else None
         product_url_str = str(product_info.url) if product_info.url else None
         
+        # Сохраняем дополнительные данные в last_check_data (JSONB)
+        last_check_data = {
+            "brand": product_info.brand,
+            "category": product_info.category,
+            "seller_name": product_info.seller_name,
+            "stock_count": product_info.stock_count,
+            "fetch_time_ms": product_info.fetch_time_ms,
+            "source": str(product_info.source) if product_info.source else None
+        }
+        
         data = {
             "article_number": article.article_number,
             "user_id": article.user_id,
@@ -83,6 +93,7 @@ async def create_article(article: ArticleCreate):
             "available": product_info.available,
             "image_url": image_url_str,
             "product_url": product_url_str,
+            "last_check_data": last_check_data,
             "status": "active",
             "last_check": datetime.now().isoformat(),
             "price_updated_at": datetime.now().isoformat()
@@ -301,6 +312,16 @@ async def check_article(article_id: str):
         image_url_str = str(product_info.image_url) if product_info.image_url else None
         product_url_str = str(product_info.url) if product_info.url else None
         
+        # Обновляем last_check_data (JSONB)
+        last_check_data = {
+            "brand": product_info.brand,
+            "category": product_info.category,
+            "seller_name": product_info.seller_name,
+            "stock_count": product_info.stock_count,
+            "fetch_time_ms": product_info.fetch_time_ms,
+            "source": str(product_info.source) if product_info.source else None
+        }
+        
         update_data = {
             "name": product_info.name,
             "price": product_info.price,
@@ -310,6 +331,7 @@ async def check_article(article_id: str):
             "available": product_info.available,
             "image_url": image_url_str,
             "product_url": product_url_str,
+            "last_check_data": last_check_data,
             "last_check": checked_at.isoformat(),
             "updated_at": checked_at.isoformat()
         }
