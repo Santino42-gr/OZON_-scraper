@@ -294,10 +294,20 @@ class BackendAPIClient:
             "/api/v1/articles/",
             params={"user_id": user_id, "limit": limit, "offset": offset}
         )
-        # Ответ может быть списком напрямую или объектом с полем articles
+        # После изменений backend возвращает объект с полями items и total
         if isinstance(response, list):
+            logger.debug(f"📦 Got {len(response)} articles (list format)")
             return response
-        return response.get("articles", [])
+        # Новый формат: {items: [], total: int}
+        if isinstance(response, dict) and "items" in response:
+            items = response.get("items", [])
+            total = response.get("total", 0)
+            logger.debug(f"📦 Got {len(items)} articles out of {total} total (new format)")
+            return items
+        # Старый формат (для совместимости)
+        articles = response.get("articles", []) if isinstance(response, dict) else []
+        logger.debug(f"📦 Got {len(articles)} articles (legacy format)")
+        return articles
     
     async def delete_article(self, article_id: str, user_id: str) -> Dict[str, Any]:
         """Удалить артикул"""
