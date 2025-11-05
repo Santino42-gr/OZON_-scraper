@@ -192,7 +192,8 @@ class ParserMarketClient:
     async def submit_task(
         self,
         article: str,
-        userlabel: Optional[str] = None
+        userlabel: Optional[str] = None,
+        use_marketid: bool = True
     ) -> Dict[str, Any]:
         """
         Отправить задачу на парсинг товара
@@ -200,6 +201,7 @@ class ParserMarketClient:
         Args:
             article: Артикул товара Ozon
             userlabel: Уникальная метка задачи (по умолчанию генерируется автоматически)
+            use_marketid: Если True - использует marketid (SKU ID), если False - productid (артикул продавца)
 
         Returns:
             Dict с информацией о задаче:
@@ -212,21 +214,35 @@ class ParserMarketClient:
         if not userlabel:
             userlabel = f"ozon_{article}_{int(datetime.now().timestamp())}"
 
-        # Для Ozon используем marketid (SKU ID) вместо productid (артикул продавца)
+        # Для Ozon можно использовать либо marketid (SKU ID), либо productid (артикул продавца)
         # marketid - это SKU ID товара на маркетплейсе
         # productid - это артикул продавца
-        product = {
-            "category": "",
-            "code": 0.0,
-            "productid": "",  # Пусто для Ozon при использовании marketid
-            "brand": "",
-            "name": f"Product {article}",  # Required field
-            "linkset": [f"https://www.ozon.ru/product/{article}/"],
-            "marketid": str(article),  # Используем marketid для Ozon
-            "price": 0.0,
-            "donotsearch": "",
-            "textsearch": ""
-        }
+        if use_marketid:
+            product = {
+                "category": "",
+                "code": 0.0,
+                "productid": "",  # Пусто для Ozon при использовании marketid
+                "brand": "",
+                "name": f"Product {article}",  # Required field
+                "linkset": [f"https://www.ozon.ru/product/{article}/"],
+                "marketid": str(article),  # Используем marketid для Ozon
+                "price": 0.0,
+                "donotsearch": "",
+                "textsearch": ""
+            }
+        else:
+            product = {
+                "category": "",
+                "code": 0.0,
+                "productid": str(article),  # Используем productid (артикул продавца)
+                "brand": "",
+                "name": f"Product {article}",  # Required field
+                "linkset": [f"https://www.ozon.ru/product/{article}/"],
+                "marketid": "",  # Пусто при использовании productid
+                "price": 0.0,
+                "donotsearch": "",
+                "textsearch": ""
+            }
 
         payload = {
             "apikey": self.api_key,
@@ -428,7 +444,8 @@ class ParserMarketClient:
     async def parse_sync(
         self,
         article: str,
-        timeout: Optional[int] = None
+        timeout: Optional[int] = None,
+        use_marketid: bool = True
     ) -> Optional[ProductInfo]:
         """
         Синхронный парсинг товара (отправка задачи + ожидание результата)
@@ -438,6 +455,7 @@ class ParserMarketClient:
         Args:
             article: Артикул товара Ozon
             timeout: Максимальное время ожидания (по умолчанию self.timeout)
+            use_marketid: Если True - использует marketid, если False - productid
 
         Returns:
             ProductInfo или None если парсинг не удался
@@ -451,7 +469,7 @@ class ParserMarketClient:
 
         try:
             # 1. Отправляем задачу
-            submit_result = await self.submit_task(article)
+            submit_result = await self.submit_task(article, use_marketid=use_marketid)
             userlabel = submit_result.get("userlabel")
 
             if not userlabel:
@@ -529,6 +547,119 @@ class ParserMarketClient:
         # Используем тот же метод parse_sync, так как submit_task()
         # уже использует marketid по умолчанию для Ozon
         return await self.parse_sync(article, timeout)
+
+    async def parse_productid(
+        self,
+        article: str,
+        timeout: Optional[int] = None
+    ) -> Optional[ProductInfo]:
+        """
+        Парсинг товара используя метод productid (артикул продавца)
+
+        Args:
+            article: Артикул продавца (productid)
+            timeout: Максимальное время ожидания (по умолчанию self.timeout)
+
+        Returns:
+            ProductInfo или None если парсинг не удался
+        """
+        start_time = datetime.now()
+
+        try:
+            # 1. Отправляем задачу с use_marketid=False
+            submit_result = await self.submit_task(article, use_marketid=False)
+            userlabel = submit_result.get("userlabel")
+
+            if not userlabel:
+                logger.error(f"No userlabel in response | article={article}")
+                return None
+
+            # 2. Ждем завершения
+            task = await self.wait_for_completion(
+                userlabel=userlabel,
+                timeout=timeout
+            )
+
+            # 3. Скачиваем JSON отчет
+            report_url = self._get_field(task, "report_json")
+            if not report_url:
+                logger.error(f"No JSON report URL | article={article}")
+                return None
+
+            report_data = await self.download_json_report(report_url)
+
+            # 4. Парсим в ProductInfo
+            product_info = self._parse_report_to_product_info(report_data, article)
+
+            # Добавляем метаданные
+            if product_info:
+                duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
+                product_info.fetch_time_ms = duration_ms
+                product_info.source = ScrapingSource.MANUAL
+                product_info.last_check = datetime.now()
+
+                logger.info(
+                    f"Product parsed successfully (productid) | "
+                    f"article={article} | duration={duration_ms}ms"
+                )
+
+            return product_info
+
+        except ParserMarketTimeoutError:
+            logger.error(f"Parsing timeout (productid) | article={article}")
+            return None
+        except ParserMarketTaskError as e:
+            logger.error(f"Parsing task failed (productid) | article={article} | error={e}")
+            return None
+        except ParserMarketAPIError as e:
+            logger.error(f"Parser Market API error (productid) | article={article} | error={e}")
+            return None
+        except Exception as e:
+            logger.error(f"Parsing failed (productid) | article={article} | error={e}", exc_info=True)
+            return None
+
+    async def parse_auto(
+        self,
+        article: str,
+        timeout: Optional[int] = None
+    ) -> Optional[ProductInfo]:
+        """
+        Автоматический парсинг товара: пробует productid, затем marketid
+        
+        Логика из parser_ozon.py: сначала пробует productid (артикул продавца),
+        если не находит - пробует marketid (SKU ID Ozon).
+
+        Args:
+            article: Артикул товара Ozon
+            timeout: Максимальное время ожидания для каждого метода (по умолчанию self.timeout)
+
+        Returns:
+            ProductInfo или None если товар не найден обоими методами
+
+        Example:
+            >>> client = ParserMarketClient(api_key="key")
+            >>> product = await client.parse_auto("1066650955")
+            >>> print(product.price)
+        """
+        logger.info(f"Auto parsing | article={article} | trying productid first...")
+
+        # Пробуем сначала productid (артикул продавца)
+        product = await self.parse_productid(article, timeout=timeout)
+        
+        if product:
+            logger.info(f"✅ Product found via productid | article={article}")
+            return product
+
+        # Если не нашли, пробуем marketid (SKU ID)
+        logger.info(f"Product not found via productid | article={article} | trying marketid...")
+        product = await self.parse_marketid(article, timeout=timeout)
+        
+        if product:
+            logger.info(f"✅ Product found via marketid | article={article}")
+            return product
+
+        logger.warning(f"❌ Product not found via both methods | article={article}")
+        return None
 
     async def parse_batch(
         self,

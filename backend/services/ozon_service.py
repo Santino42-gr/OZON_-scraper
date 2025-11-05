@@ -61,6 +61,9 @@ class OzonService:
         """
         Получить полную информацию о товаре
 
+        Использует автоматический поиск: сначала пробует productid (артикул продавца),
+        затем marketid (SKU ID Ozon), если первый метод не нашел товар.
+
         Args:
             article: артикул товара OZON
             use_cache: использовать кеш (игнорируется для Parser Market API)
@@ -68,13 +71,13 @@ class OzonService:
         Returns:
             ProductInfo (from models.ozon_models) или None если товар не найден
         """
-        # Используем Parser Market API с методом marketid (SKU ID Ozon)
+        # Используем Parser Market API с автоматическим поиском (productid → marketid)
         from services.parser_market_client import get_parser_market_client
 
         try:
             client = get_parser_market_client()
-            # Используем parse_marketid для явного указания метода поиска
-            product = await client.parse_marketid(article)
+            # Используем parse_auto для автоматического поиска обоими методами
+            product = await client.parse_auto(article)
 
             if product:
                 logger.info(f"✅ Product found: {article} - {product.name}")
