@@ -45,64 +45,98 @@ def format_article_info(article: Dict[str, Any]) -> str:
     if is_problematic:
         text += f"\n⚠️ <b>Проблемный артикул</b>\n"
     
-    # Данные последней проверки
+    # Извлекаем цены из корневых полей или из last_check_data
+    # Сначала проверяем корневые поля (приоритет)
+    normal_price = article.get("normal_price")
+    ozon_card_price = article.get("ozon_card_price")
+    price = article.get("price")
+    old_price = article.get("old_price")
+    average_price_7days = article.get("average_price_7days")
+    
+    # Если нет в корневых полях, берем из last_check_data
     last_check = article.get("last_check_data")
     if last_check and isinstance(last_check, dict):
         if "error" in last_check:
             text += f"\n❌ <i>Ошибка: {last_check['error']}</i>\n"
         else:
-            # Цены
-            price = last_check.get("price")
-            old_price = last_check.get("old_price")
-            normal_price = last_check.get("normal_price")
-            ozon_card_price = last_check.get("ozon_card_price")
-            
-            if price:
-                text += f"\n<b>💰 Цена:</b> {price} ₽"
-                if old_price and old_price > price:
-                    text += f" <s>{old_price} ₽</s>"
-                text += "\n"
-            
-            if normal_price:
-                text += f"<b>💳 Без Ozon Card:</b> {normal_price} ₽\n"
-            
-            if ozon_card_price:
-                text += f"<b>🎴 С Ozon Card:</b> {ozon_card_price} ₽\n"
-            
-            # СПП показатели
+            # Fallback на last_check_data если корневые поля пустые
+            if not normal_price:
+                normal_price = last_check.get("normal_price")
+            if not ozon_card_price:
+                ozon_card_price = last_check.get("ozon_card_price")
+            if not price:
+                price = last_check.get("price")
+            if not old_price:
+                old_price = last_check.get("old_price")
+            if not average_price_7days:
+                average_price_7days = last_check.get("average_price_7days")
+    
+    # Показываем цены если они есть
+    if normal_price or ozon_card_price or price:
+        text += "\n<b>💰 Цены:</b>\n"
+        
+        if normal_price:
+            text += f"   💳 Без Ozon Card: {normal_price:,.0f} ₽\n"
+        
+        if ozon_card_price:
+            text += f"   🎴 С Ozon Card: {ozon_card_price:,.0f} ₽\n"
+        
+        # Если есть старая цена, показываем
+        if old_price and price and old_price > price:
+            text += f"   💰 Текущая цена: {price:,.0f} ₽ <s>{old_price:,.0f} ₽</s>\n"
+        elif price:
+            text += f"   💰 Цена: {price:,.0f} ₽\n"
+        
+        # Средняя цена за неделю
+        if average_price_7days:
+            text += f"   📊 Средняя за неделю: {average_price_7days:,.0f} ₽\n"
+    
+    # СПП показатели (из корневых полей или last_check_data)
+    spp1 = article.get("spp1")
+    spp2 = article.get("spp2")
+    spp_total = article.get("spp_total")
+    
+    if last_check and isinstance(last_check, dict):
+        if spp1 is None:
             spp1 = last_check.get("spp1")
+        if spp2 is None:
             spp2 = last_check.get("spp2")
+        if spp_total is None:
             spp_total = last_check.get("spp_total")
-            
-            if any([spp1 is not None, spp2 is not None, spp_total is not None]):
-                text += "\n<b>📊 Показатели скидки:</b>\n"
-                
-                if spp1 is not None:
-                    text += f"  • СПП1: {spp1:.1f}%\n"
-                else:
-                    text += f"  • СПП1: Н/Д\n"
-                
-                if spp2 is not None:
-                    text += f"  • СПП2: {spp2:.1f}%\n"
-                else:
-                    text += f"  • СПП2: Н/Д\n"
-                
-                if spp_total is not None:
-                    text += f"  • СПП Общий: {spp_total:.1f}%\n"
-                else:
-                    text += f"  • СПП Общий: Н/Д\n"
-            
-            # Название товара
-            name = last_check.get("name")
-            if name:
-                text += f"\n<b>Название:</b> {name}\n"
-            
-            # Наличие
-            available = last_check.get("available", last_check.get("availability"))
-            if available is not None:
-                avail_text = "В наличии" if available else "Нет в наличии"
-                avail_emoji = "✅" if available else "❌"
-                text += f"<b>Наличие:</b> {avail_emoji} {avail_text}\n"
+    
+    if any([spp1 is not None, spp2 is not None, spp_total is not None]):
+        text += "\n<b>📊 Показатели скидки:</b>\n"
+        
+        if spp1 is not None:
+            text += f"  • СПП1: {spp1:.1f}%\n"
+        else:
+            text += f"  • СПП1: Н/Д\n"
+        
+        if spp2 is not None:
+            text += f"  • СПП2: {spp2:.1f}%\n"
+        else:
+            text += f"  • СПП2: Н/Д\n"
+        
+        if spp_total is not None:
+            text += f"  • СПП Общий: {spp_total:.1f}%\n"
+        else:
+            text += f"  • СПП Общий: Н/Д\n"
+    
+    # Название товара
+    name = article.get("name")
+    if not name and last_check and isinstance(last_check, dict):
+        name = last_check.get("name")
+    if name:
+        text += f"\n<b>Название:</b> {name}\n"
+    
+    # Наличие
+    available = article.get("available")
+    if available is None and last_check and isinstance(last_check, dict):
+        available = last_check.get("available", last_check.get("availability"))
+    if available is not None:
+        avail_text = "В наличии" if available else "Нет в наличии"
+        avail_emoji = "✅" if available else "❌"
+        text += f"<b>Наличие:</b> {avail_emoji} {avail_text}\n"
     
     return text
 
