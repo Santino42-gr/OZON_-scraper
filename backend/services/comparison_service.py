@@ -905,7 +905,7 @@ class ComparisonService:
                 .eq("article_number", article_number) \
                 .execute()
 
-            if result.data:
+            if result.data and len(result.data) > 0:
                 logger.info(f"Article {article_number} already exists")
                 return result.data[0]
 
@@ -920,6 +920,19 @@ class ComparisonService:
             return article
 
         except Exception as e:
+            # Если возникла ошибка duplicate key, значит артикул уже существует
+            # Пытаемся получить его из базы
+            if "already exists" in str(e) or "duplicate key" in str(e) or "23505" in str(e):
+                logger.warning(f"Article {article_number} already exists (caught duplicate key error), fetching it")
+                result = self.supabase.table("ozon_scraper_articles") \
+                    .select("*") \
+                    .eq("user_id", user_id) \
+                    .eq("article_number", article_number) \
+                    .execute()
+
+                if result.data and len(result.data) > 0:
+                    return result.data[0]
+
             logger.error(f"Error in get_or_create_article: {e}")
             raise
 
