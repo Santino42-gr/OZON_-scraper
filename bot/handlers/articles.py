@@ -27,7 +27,7 @@ from keyboards import (
     get_article_actions_keyboard,
     get_delete_confirmation_keyboard
 )
-from services.api_client import get_api_client, APIError
+from services.api_client import get_api_client, APIError, APITimeoutError
 from utils.formatters import (
     format_article_info,
     format_article_list,
@@ -188,8 +188,25 @@ async def process_add_article(message: Message, article_number: str, state: FSMC
         
         logger.success(f"✅ Article {article_number} added for user {user.id}")
         
+    except APITimeoutError as e:
+        await state.clear()
+        await loading_msg.delete() if 'loading_msg' in locals() else None
+        
+        error_text = "Таймаут при получении данных с OZON"
+        details = "Парсинг товара занял слишком много времени. Попробуйте позже или проверьте правильность артикула."
+        
+        await message.answer(
+            text=format_error(error_text, details),
+            reply_markup=get_main_menu(),
+            parse_mode="HTML"
+        )
+        
+        logger.error(f"⏱️ Timeout adding article for user {user.id}: {e}")
+        return
+    
     except APIError as e:
         await state.clear()
+        await loading_msg.delete() if 'loading_msg' in locals() else None
         
         error_msg = str(e)
         if "already exists" in error_msg.lower() or "уже добавлен" in error_msg.lower():

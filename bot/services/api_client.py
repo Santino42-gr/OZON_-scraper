@@ -217,7 +217,8 @@ class BackendAPIClient:
     async def create_article(
         self,
         user_id: str,
-        article_number: str
+        article_number: str,
+        timeout: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Создать артикул
@@ -225,18 +226,61 @@ class BackendAPIClient:
         Args:
             user_id: UUID пользователя
             article_number: Номер артикула OZON
+            timeout: Таймаут в секундах (по умолчанию 60 для парсинга)
             
         Returns:
             Данные артикула
         """
-        return await self._request(
-            "POST",
-            "/api/v1/articles",
-            json={
-                "user_id": user_id,
-                "article_number": article_number
-            }
-        )
+        # Используем увеличенный таймаут для создания артикула
+        # parse_auto может вызывать два метода последовательно (productid + marketid)
+        # каждый до 120 секунд, поэтому нужно больше времени
+        if timeout is None:
+            timeout = 180  # 180 секунд (3 минуты) для парсинга товара
+        
+        # Создаем временную сессию с увеличенным таймаутом
+        url = f"{self.base_url}/api/v1/articles"
+        temp_timeout = aiohttp.ClientTimeout(total=timeout)
+        
+        try:
+            async with aiohttp.ClientSession(
+                timeout=temp_timeout,
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": "OZON-Bot/1.0"
+                }
+            ) as temp_session:
+                logger.debug(f"🔄 POST {url} (timeout: {timeout}s)")
+                
+                async with temp_session.post(
+                    url,
+                    json={
+                        "user_id": user_id,
+                        "article_number": article_number
+                    }
+                ) as response:
+                    # Получаем тело ответа
+                    try:
+                        data = await response.json()
+                    except:
+                        data = {"error": await response.text()}
+                    
+                    # Проверяем статус
+                    if response.status >= 400:
+                        error_msg = data.get("detail", data.get("error", "Unknown error"))
+                        raise APIResponseError(
+                            f"API error: {error_msg}",
+                            status_code=response.status,
+                            response_data=data
+                        )
+                    
+                    logger.debug(f"✅ POST {url} - {response.status}")
+                    return data
+        except asyncio.TimeoutError:
+            logger.error(f"⏱️ Request timeout after {timeout}s: {url}")
+            raise APITimeoutError(f"Request timeout after {timeout}s: {url}")
+        except aiohttp.ClientError as e:
+            logger.error(f"🔌 Connection error: {e}")
+            raise APIConnectionError(f"Connection error: {str(e)}")
     
     async def get_user_articles(
         self,
