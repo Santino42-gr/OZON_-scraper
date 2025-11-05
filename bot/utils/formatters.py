@@ -105,22 +105,27 @@ def format_article_info(article: Dict[str, Any]) -> str:
             spp_total = last_check.get("spp_total")
     
     if any([spp1 is not None, spp2 is not None, spp_total is not None]):
-        text += "\n<b>📊 Показатели скидки:</b>\n"
+        text += "\n<b>📊 Показатели скидки (СПП):</b>\n"
+        
+        if spp_total is not None:
+            # Выделяем СПП Общий как основной показатель
+            emoji = "🔥" if spp_total > 20 else "💰" if spp_total > 10 else "📉"
+            text += f"  {emoji} <b>СПП Общий: {spp_total:.1f}%</b>\n"
+            text += f"     (скидка от средней за неделю)\n"
+        else:
+            text += f"  • СПП Общий: Н/Д\n"
         
         if spp1 is not None:
             text += f"  • СПП1: {spp1:.1f}%\n"
+            text += f"     (от средней → обычная цена)\n"
         else:
             text += f"  • СПП1: Н/Д\n"
         
         if spp2 is not None:
             text += f"  • СПП2: {spp2:.1f}%\n"
+            text += f"     (скидка Ozon Card)\n"
         else:
             text += f"  • СПП2: Н/Д\n"
-        
-        if spp_total is not None:
-            text += f"  • СПП Общий: {spp_total:.1f}%\n"
-        else:
-            text += f"  • СПП Общий: Н/Д\n"
     
     # Название товара
     name = article.get("name")

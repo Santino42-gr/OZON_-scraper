@@ -69,9 +69,23 @@ def get_articles_list_keyboard(
     
     for article in page_articles:
         status_emoji = "✅" if article.get("status") == "active" else "❌"
+        article_number = article.get("article_number", "N/A")
+        
+        # Добавляем СПП Общий если доступен
+        spp_total = article.get("spp_total")
+        spp_text = ""
+        if spp_total is not None:
+            spp_text = f" | СПП: {spp_total:.1f}%"
+        
+        # Формируем текст кнопки (ограничиваем длину)
+        button_text = f"{status_emoji} {article_number}{spp_text}"
+        # Telegram ограничивает длину текста кнопки до 64 символов
+        if len(button_text) > 60:
+            button_text = f"{status_emoji} {article_number}"
+        
         builder.row(
             InlineKeyboardButton(
-                text=f"{status_emoji} {article['article_number']}",
+                text=button_text,
                 callback_data=f"article_view:{article['id']}"
             )
         )
