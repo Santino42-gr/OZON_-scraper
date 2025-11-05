@@ -946,9 +946,29 @@ class ComparisonService:
         for article in articles_data:
             last_check = article.get('last_check')
             if last_check:
+                # Если это dict, пытаемся извлечь дату
+                if isinstance(last_check, dict):
+                    # Может быть поле 'created_at' или 'date' в dict
+                    last_check = last_check.get('created_at') or last_check.get('date') or last_check.get('timestamp')
+                    if not last_check:
+                        continue
+                
+                # Преобразуем в datetime если это строка
                 if isinstance(last_check, str):
-                    last_check = datetime.fromisoformat(last_check.replace('Z', '+00:00'))
-                if last_check < threshold:
-                    return False
+                    try:
+                        last_check = datetime.fromisoformat(last_check.replace('Z', '+00:00'))
+                    except (ValueError, AttributeError):
+                        continue
+                # Проверяем что это действительно datetime объект
+                elif not isinstance(last_check, datetime):
+                    continue
+
+                # Сравниваем даты
+                try:
+                    if last_check < threshold:
+                        return False
+                except TypeError:
+                    # Если сравнение не удалось, пропускаем
+                    continue
 
         return True

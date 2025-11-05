@@ -81,7 +81,8 @@ docker-compose -f docker-compose.prod.yml build
 # Запуск контейнеров в фоновом режиме
 docker-compose -f docker-compose.prod.yml up -d
 ```
-
+# посмотреть логи бота
+docker-compose -f docker-compose.prod.yml logs -f bot
 ---
 
 ## Шаг 7: Проверка статуса

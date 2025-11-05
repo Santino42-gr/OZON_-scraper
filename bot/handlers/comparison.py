@@ -45,6 +45,18 @@ def validate_article_number(article: str) -> bool:
     return bool(re.match(pattern, article))
 
 
+def escape_html(text: str) -> str:
+    """Экранировать HTML спецсимволы"""
+    if not text:
+        return ""
+    return (str(text)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#x27;"))
+
+
 def format_comparison_result(comparison: dict) -> str:
     """
     Форматировать результат сравнения для отображения
@@ -58,93 +70,172 @@ def format_comparison_result(comparison: dict) -> str:
     try:
         text = "🔥 <b>Результаты сравнения</b>\n\n"
 
-        # Основная информация
-        own = comparison.get("own_product", {})
-        competitor = comparison.get("competitor_product", {})
-        metrics = comparison.get("metrics", {})
+        # Основная информация - извлекаем данные безопасно
+        own = comparison.get("own_product") or {}
+        # Если own_product это объект Pydantic, преобразуем в dict
+        if hasattr(own, 'dict'):
+            own = own.dict()
+        elif not isinstance(own, dict):
+            own = {}
+            
+        # Конкурент может быть в списке competitors или как competitor_product
+        competitor = None
+        competitors = comparison.get("competitors", [])
+        if competitors and len(competitors) > 0:
+            competitor = competitors[0]
+        elif comparison.get("competitor_product"):
+            competitor = comparison.get("competitor_product")
+        
+        if competitor:
+            # Если competitor это объект Pydantic, преобразуем в dict
+            if hasattr(competitor, 'dict'):
+                competitor = competitor.dict()
+            elif not isinstance(competitor, dict):
+                competitor = {}
+        else:
+            competitor = {}
+            
+        metrics = comparison.get("metrics") or {}
+        # Если metrics это объект Pydantic, преобразуем в dict
+        if hasattr(metrics, 'dict'):
+            metrics = metrics.dict()
+        elif not isinstance(metrics, dict):
+            metrics = {}
 
         # Ваш товар
         text += "📦 <b>Ваш товар:</b>\n"
-        text += f"   Артикул: {own.get('article_number', 'N/A')}\n"
+        own_article = own.get('article_number', 'N/A') if own else 'N/A'
+        text += f"   Артикул: {own_article}\n"
         if own.get("name"):
-            text += f"   Название: {own.get('name')}\n"
-        text += f"   💰 Цена: {own.get('normal_price', 0):,.0f} ₽\n"
-        text += f"   💳 С Ozon Card: {own.get('ozon_card_price', 0):,.0f} ₽\n"
+            name = escape_html(str(own.get('name')))
+            text += f"   Название: {name}\n"
+        own_normal_price = own.get('normal_price') or own.get('price') or 0
+        own_card_price = own.get('ozon_card_price') or own_normal_price or 0
+        text += f"   💰 Цена: {own_normal_price:,.0f} ₽\n"
+        text += f"   💳 С Ozon Card: {own_card_price:,.0f} ₽\n"
         if own.get("rating"):
             text += f"   ⭐ Рейтинг: {own.get('rating'):.1f} ({own.get('reviews_count', 0)} отзывов)\n"
         text += "\n"
 
         # Товар конкурента
-        text += "🎯 <b>Конкурент:</b>\n"
-        text += f"   Артикул: {competitor.get('article_number', 'N/A')}\n"
-        if competitor.get("name"):
-            text += f"   Название: {competitor.get('name')}\n"
-        text += f"   💰 Цена: {competitor.get('normal_price', 0):,.0f} ₽\n"
-        text += f"   💳 С Ozon Card: {competitor.get('ozon_card_price', 0):,.0f} ₽\n"
-        if competitor.get("rating"):
-            text += f"   ⭐ Рейтинг: {competitor.get('rating'):.1f} ({competitor.get('reviews_count', 0)} отзывов)\n"
-        text += "\n"
+        if competitor:
+            text += "🎯 <b>Конкурент:</b>\n"
+            comp_article = competitor.get('article_number', 'N/A')
+            text += f"   Артикул: {comp_article}\n"
+            if competitor.get("name"):
+                name = escape_html(str(competitor.get('name')))
+                text += f"   Название: {name}\n"
+            comp_normal_price = competitor.get('normal_price') or competitor.get('price') or 0
+            comp_card_price = competitor.get('ozon_card_price') or comp_normal_price or 0
+            text += f"   💰 Цена: {comp_normal_price:,.0f} ₽\n"
+            text += f"   💳 С Ozon Card: {comp_card_price:,.0f} ₽\n"
+            if competitor.get("rating"):
+                text += f"   ⭐ Рейтинг: {competitor.get('rating'):.1f} ({competitor.get('reviews_count', 0)} отзывов)\n"
+            text += "\n"
 
         # Метрики сравнения
-        text += "📊 <b>Сравнительный анализ:</b>\n\n"
+        if metrics:
+            text += "📊 <b>Сравнительный анализ:</b>\n\n"
 
-        # Цена
-        price_diff = metrics.get("price_difference", {})
-        if price_diff:
-            text += f"💵 <b>Ценовая позиция:</b>\n"
-            abs_diff = price_diff.get("absolute", 0)
-            pct_diff = price_diff.get("percentage", 0)
-            if abs_diff > 0:
-                text += f"   Ваша цена на {abs_diff:,.0f} ₽ ({pct_diff:.1f}%) выше конкурента\n"
-            elif abs_diff < 0:
-                text += f"   Ваша цена на {abs(-abs_diff):,.0f} ₽ ({abs(pct_diff):.1f}%) ниже конкурента ✅\n"
-            else:
-                text += f"   Цены одинаковые\n"
-            text += "\n"
+            # Цена - может быть как price или price_difference
+            price_diff = metrics.get("price") or metrics.get("price_difference") or {}
+            if price_diff:
+                # Если это объект Pydantic, преобразуем
+                if hasattr(price_diff, 'dict'):
+                    price_diff = price_diff.dict()
+                if isinstance(price_diff, dict):
+                    text += f"💵 <b>Ценовая позиция:</b>\n"
+                    abs_diff = price_diff.get("absolute", 0)
+                    pct_diff = price_diff.get("percentage", 0)
+                    recommendation = price_diff.get("recommendation", "")
+                    if abs_diff > 0:
+                        text += f"   Ваша цена на {abs_diff:,.0f} ₽ ({pct_diff:.1f}%) выше конкурента\n"
+                    elif abs_diff < 0:
+                        text += f"   Ваша цена на {abs(-abs_diff):,.0f} ₽ ({abs(pct_diff):.1f}%) ниже конкурента ✅\n"
+                    else:
+                        text += f"   Цены одинаковые\n"
+                    if recommendation:
+                        rec_text = escape_html(str(recommendation))
+                        text += f"   💡 {rec_text}\n"
+                    text += "\n"
 
-        # Рейтинг
-        rating_diff = metrics.get("rating_difference", {})
-        if rating_diff:
-            text += f"⭐ <b>Рейтинг и отзывы:</b>\n"
-            rating_abs = rating_diff.get("absolute", 0)
-            if rating_abs > 0:
-                text += f"   Ваш рейтинг на {rating_abs:.1f} выше ✅\n"
-            elif rating_abs < 0:
-                text += f"   Ваш рейтинг на {abs(rating_abs):.1f} ниже\n"
-            else:
-                text += f"   Рейтинги одинаковые\n"
+            # Рейтинг
+            rating_diff = metrics.get("rating") or metrics.get("rating_difference") or {}
+            if rating_diff:
+                # Если это объект Pydantic, преобразуем
+                if hasattr(rating_diff, 'dict'):
+                    rating_diff = rating_diff.dict()
+                if isinstance(rating_diff, dict):
+                    text += f"⭐ <b>Рейтинг и отзывы:</b>\n"
+                    rating_abs = rating_diff.get("absolute", 0)
+                    if rating_abs > 0:
+                        text += f"   Ваш рейтинг на {rating_abs:.1f} выше ✅\n"
+                    elif rating_abs < 0:
+                        text += f"   Ваш рейтинг на {abs(rating_abs):.1f} ниже\n"
+                    else:
+                        text += f"   Рейтинги одинаковые\n"
 
-            reviews_diff = rating_diff.get("reviews_difference", 0)
-            if reviews_diff != 0:
-                text += f"   Отзывов: {'больше' if reviews_diff > 0 else 'меньше'} на {abs(reviews_diff)}\n"
-            text += "\n"
+                    # Отзывы могут быть в reviews или rating_difference
+                    reviews_diff = metrics.get("reviews", {})
+                    if isinstance(reviews_diff, dict):
+                        reviews_abs = reviews_diff.get("absolute", 0)
+                    else:
+                        reviews_abs = rating_diff.get("reviews_difference", 0)
+                        
+                    if reviews_abs != 0:
+                        text += f"   Отзывов: {'больше' if reviews_abs > 0 else 'меньше'} на {abs(reviews_abs)}\n"
+                    text += "\n"
 
-        # Индекс конкурентоспособности
-        competitiveness = comparison.get("competitiveness_index")
-        if competitiveness:
-            text += f"🎯 <b>Индекс конкурентоспособности:</b> {competitiveness:.1f}/100\n"
+            # Индекс конкурентоспособности
+            competitiveness = metrics.get("competitiveness_index") or comparison.get("competitiveness_index")
+            if competitiveness:
+                competitiveness_value = float(competitiveness) * 100  # Преобразуем из 0-1 в 0-100
+                text += f"🎯 <b>Индекс конкурентоспособности:</b> {competitiveness_value:.1f}/100\n"
 
-            grade = comparison.get("grade", "")
-            grade_emoji = {
-                "A+": "🏆", "A": "🥇", "B": "🥈",
-                "C": "🥉", "D": "⚠️", "F": "❌"
-            }.get(grade, "")
+                grade = metrics.get("grade") or comparison.get("grade") or ""
+                if isinstance(grade, str):
+                    grade_value = grade
+                elif hasattr(grade, 'value'):
+                    grade_value = grade.value
+                else:
+                    grade_value = str(grade)
+                    
+                grade_emoji = {
+                    "A+": "🏆", "A": "🥇", "B": "🥈",
+                    "C": "🥉", "D": "⚠️", "F": "❌"
+                }.get(grade_value, "")
 
-            if grade:
-                text += f"   Оценка: {grade_emoji} <b>{grade}</b>\n"
-            text += "\n"
+                if grade_value:
+                    text += f"   Оценка: {grade_emoji} <b>{grade_value}</b>\n"
+                    
+                # Общая рекомендация
+                overall_rec = metrics.get("overall_recommendation") or ""
+                if overall_rec:
+                    rec_text = escape_html(str(overall_rec))
+                    text += f"   💡 {rec_text}\n"
+                text += "\n"
 
         # Рекомендации
         recommendations = comparison.get("recommendations", [])
+        if not recommendations and metrics:
+            # Может быть одна общая рекомендация
+            overall_rec = metrics.get("overall_recommendation") or ""
+            if overall_rec and not text.endswith(f"💡 {escape_html(str(overall_rec))}\n\n"):
+                recommendations = [overall_rec]
+                
         if recommendations:
             text += "💡 <b>Рекомендации:</b>\n"
             for i, rec in enumerate(recommendations[:3], 1):  # Первые 3 рекомендации
-                text += f"   {i}. {rec}\n"
+                # Экранируем рекомендации для безопасного HTML
+                rec_text = escape_html(str(rec))
+                text += f"   {i}. {rec_text}\n"
 
         return text
 
     except Exception as e:
         logger.error(f"Error formatting comparison: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return "Результаты сравнения получены, но произошла ошибка форматирования"
 
 

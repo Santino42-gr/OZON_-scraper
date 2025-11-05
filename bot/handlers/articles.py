@@ -192,23 +192,74 @@ async def process_add_article(message: Message, article_number: str, state: FSMC
         await state.clear()
         
         error_msg = str(e)
-        if "already exists" in error_msg.lower():
-            error_text = "Этот артикул уже добавлен"
-            details = "Проверьте список своих артикулов с помощью /list"
+        if "already exists" in error_msg.lower() or "уже добавлен" in error_msg.lower():
+            # Если артикул уже существует, получаем его и показываем информацию
+            try:
+                # Получаем список артикулов пользователя
+                articles = await api_client.get_user_articles(user_id=user_id)
+                
+                # Ищем нужный артикул
+                existing_article = None
+                for article in articles:
+                    if article.get("article_number") == article_number:
+                        existing_article = article
+                        break
+                
+                if existing_article:
+                    # Показываем информацию о существующем артикуле
+                    text = "ℹ️ <b>Этот артикул уже добавлен в ваш список</b>\n\n"
+                    text += format_article_info(existing_article)
+                    
+                    await message.answer(
+                        text=truncate_text(text),
+                        reply_markup=get_main_menu(),
+                        parse_mode="HTML"
+                    )
+                    
+                    logger.info(f"ℹ️ Article {article_number} already exists for user {user.id}, showing info")
+                else:
+                    # Если не нашли в списке, показываем обычное сообщение
+                    error_text = "Этот артикул уже добавлен"
+                    details = "Проверьте список своих артикулов с помощью /list"
+                    
+                    await message.answer(
+                        text=format_error(error_text, details),
+                        reply_markup=get_main_menu(),
+                        parse_mode="HTML"
+                    )
+            except Exception as fetch_error:
+                # Если не удалось получить артикул, показываем обычное сообщение
+                logger.warning(f"Failed to fetch existing article: {fetch_error}")
+                error_text = "Этот артикул уже добавлен"
+                details = "Проверьте список своих артикулов с помощью /list"
+                
+                await message.answer(
+                    text=format_error(error_text, details),
+                    reply_markup=get_main_menu(),
+                    parse_mode="HTML"
+                )
         elif "maximum" in error_msg.lower() or "limit" in error_msg.lower():
             error_text = f"Достигнут лимит артикулов ({settings.MAX_ARTICLES_PER_USER})"
             details = "Удалите ненужные артикулы перед добавлением новых"
+            
+            await message.answer(
+                text=format_error(error_text, details),
+                reply_markup=get_main_menu(),
+                parse_mode="HTML"
+            )
         else:
             error_text = "Не удалось добавить артикул"
             details = error_msg
+            
+            await message.answer(
+                text=format_error(error_text, details),
+                reply_markup=get_main_menu(),
+                parse_mode="HTML"
+            )
         
-        await message.answer(
-            text=format_error(error_text, details),
-            reply_markup=get_main_menu(),
-            parse_mode="HTML"
-        )
-        
-        logger.error(f"❌ Error adding article for user {user.id}: {e}")
+        # Логируем только если это не "уже существует" (для него уже залогировано выше)
+        if "already exists" not in error_msg.lower() and "уже добавлен" not in error_msg.lower():
+            logger.error(f"❌ Error adding article for user {user.id}: {e}")
     
     except Exception as e:
         await state.clear()
