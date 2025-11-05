@@ -404,8 +404,12 @@ class ComparisonService:
             )
 
             # 3. Добавляем в группу
-            await self.add_article_to_group(group.id, own_article.id, ArticleRole.OWN, position=0)
-            await self.add_article_to_group(group.id, competitor_article.id, ArticleRole.COMPETITOR, position=1)
+            # Получаем ID из dict или объекта
+            own_article_id = own_article.get('id') if isinstance(own_article, dict) else own_article.id
+            competitor_article_id = competitor_article.get('id') if isinstance(competitor_article, dict) else competitor_article.id
+
+            await self.add_article_to_group(group.id, own_article_id, ArticleRole.OWN, position=0)
+            await self.add_article_to_group(group.id, competitor_article_id, ArticleRole.COMPETITOR, position=1)
 
             # 4. Получаем сравнение
             comparison = await self.get_comparison(group.id, user_id)
