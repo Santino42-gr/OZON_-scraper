@@ -3,8 +3,8 @@ Articles Router
 API endpoints для управления артикулами OZON
 """
 
-from fastapi import APIRouter, HTTPException, status, Depends
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException, status, Depends, Query
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 from models.article import (
@@ -149,35 +149,110 @@ async def get_article(article_id: str):
         )
 
 
-@router.get("/", response_model=List[ArticleResponse])
+@router.get("/")
 async def list_articles(
-    user_id: Optional[str] = None,
-    status_filter: Optional[str] = "active",
-    limit: int = 100,
-    offset: int = 0
-):
+    user_id: Optional[str] = Query(None, description="UUID пользователя (для фильтрации)"),
+    status: Optional[str] = Query(None, description="Статус артикулов (active/inactive/error/all)"),
+    status_filter: Optional[str] = Query(None, description="Альтернативное имя для status"),
+    search: Optional[str] = Query(None, description="Поиск по артикулу или названию"),
+    limit: int = Query(100, le=1000, description="Количество записей (max 1000)"),
+    offset: int = Query(0, ge=0, description="Смещение для пагинации"),
+    skip: Optional[int] = Query(None, description="Альтернативное смещение (используется вместо offset)")
+) -> Dict[str, Any]:
     """
     Получить список артикулов
     
-    - **user_id**: UUID пользователя (опционально, для фильтрации)
-    - **status_filter**: Статус артикулов (active/archived/all)
-    - **limit**: Количество записей (max 1000)
-    - **offset**: Смещение для пагинации
+    Возвращает формат с пагинацией: {items: [], total: int}
     """
     try:
         supabase = get_supabase_client()
         
+        # Используем skip если передан (для совместимости с фронтендом)
+        actual_offset = skip if skip is not None else offset
+        
+        # Определяем статус фильтр (поддерживаем оба варианта названия параметра)
+        actual_status = status if status is not None else status_filter
+        
+        # Строим запрос для получения артикулов
         query = supabase.table("ozon_scraper_articles").select("*")
         
+        # Применяем фильтры
         if user_id:
             query = query.eq("user_id", user_id)
         
-        if status_filter and status_filter != "all":
-            query = query.eq("status", status_filter)
+        if actual_status and actual_status != "all":
+            query = query.eq("status", actual_status)
         
-        result = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+        # Поиск по артикулу или названию
+        if search:
+            # Supabase не поддерживает OR напрямую, поэтому используем фильтр по артикулу
+            # Для полноценного поиска по названию нужен был бы другой подход
+            query = query.ilike("article_number", f"%{search}%")
         
-        return result.data if result.data else []
+        # Получаем данные с пагинацией
+        result = query.order("created_at", desc=True).range(actual_offset, actual_offset + limit - 1).execute()
+        
+        # Получаем общее количество для подсчета
+        count_query = supabase.table("ozon_scraper_articles").select("id", count="exact")
+        if user_id:
+            count_query = count_query.eq("user_id", user_id)
+        if actual_status and actual_status != "all":
+            count_query = count_query.eq("status", actual_status)
+        if search:
+            count_query = count_query.ilike("article_number", f"%{search}%")
+        
+        count_result = count_query.execute()
+        # Supabase возвращает count как атрибут объекта, но может быть None
+        total_count = getattr(count_result, 'count', None)
+        if total_count is None:
+            # Если count не доступен, используем длину данных (приблизительно)
+            total_count = len(result.data) if result.data else 0
+        
+        # Получаем уникальные user_id для запроса пользователей
+        user_ids = set()
+        if result.data:
+            for article in result.data:
+                if article.get("user_id"):
+                    user_ids.add(article.get("user_id"))
+        
+        # Получаем данные пользователей одним запросом
+        users_map = {}
+        if user_ids:
+            users_result = supabase.table("ozon_scraper_users").select("id, telegram_id, telegram_username").in_("id", list(user_ids)).execute()
+            if users_result.data:
+                for user in users_result.data:
+                    users_map[user.get("id")] = {
+                        "id": user.get("id"),
+                        "username": user.get("telegram_username") or f"User {user.get('telegram_id')}",
+                        "telegram_id": user.get("telegram_id")
+                    }
+        
+        # Обрабатываем данные и обогащаем информацией о пользователе
+        items = []
+        if result.data:
+            for article in result.data:
+                # Добавляем информацию о пользователе
+                article_user_id = article.get("user_id")
+                if article_user_id and article_user_id in users_map:
+                    article["user"] = users_map[article_user_id]
+                else:
+                    # Если пользователь не найден, создаем пустой объект
+                    article["user"] = {
+                        "id": article_user_id,
+                        "username": "Unknown",
+                        "telegram_id": None
+                    }
+                
+                # Добавляем last_checked_at если есть last_check
+                if article.get("last_check"):
+                    article["last_checked_at"] = article.get("last_check")
+                
+                items.append(article)
+        
+        return {
+            "items": items,
+            "total": total_count
+        }
         
     except Exception as e:
         logger.error(f"Ошибка при получении списка артикулов: {e}")

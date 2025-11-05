@@ -61,7 +61,7 @@ async def get_logs(
             "total": total_count,
             "limit": limit,
             "offset": offset,
-            "data": result.data if result.data else []
+            "items": result.data if result.data else []
         }
         
     except Exception as e:
