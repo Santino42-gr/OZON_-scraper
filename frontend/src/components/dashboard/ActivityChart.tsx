@@ -7,6 +7,22 @@ interface ActivityChartProps {
 }
 
 export const ActivityChart: React.FC<ActivityChartProps> = ({ data }) => {
+  if (!data || data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Активность пользователей</CardTitle>
+          <CardDescription>Последние 30 дней</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+            <p>Данные пока недоступны</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>

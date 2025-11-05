@@ -7,6 +7,22 @@ interface RequestsChartProps {
 }
 
 export const RequestsChart: React.FC<RequestsChartProps> = ({ data }) => {
+  if (!data || data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Запросы к OZON</CardTitle>
+          <CardDescription>Успешные vs Ошибочные</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+            <p>Данные пока недоступны</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>

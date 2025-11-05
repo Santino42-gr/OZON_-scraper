@@ -103,12 +103,12 @@ export default function Dashboard() {
 
       {/* Charts */}
       <div className="grid gap-4 md:grid-cols-2">
-        {activityData && <ActivityChart data={activityData} />}
-        {requestsData && <RequestsChart data={requestsData} />}
+        <ActivityChart data={activityData || []} />
+        <RequestsChart data={requestsData || []} />
       </div>
 
       {/* Recent Activity */}
-      {logs && <RecentActivity logs={logs} />}
+      <RecentActivity logs={logs || []} />
     </div>
   );
 }

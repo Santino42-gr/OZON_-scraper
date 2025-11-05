@@ -48,6 +48,22 @@ const getUserInitials = (name?: string) => {
 };
 
 export const RecentActivity: React.FC<RecentActivityProps> = ({ logs }) => {
+  if (!logs || logs.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Последние события</CardTitle>
+          <CardDescription>Последние 10 записей логов</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+            <p>Нет данных для отображения</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>

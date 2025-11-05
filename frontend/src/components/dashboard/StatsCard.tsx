@@ -30,8 +30,8 @@ export const StatsCard: React.FC<StatsCardProps> = ({
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
-        {change !== undefined && (
-          <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 mt-1">
+          {change !== undefined && (
             <Badge variant={badgeVariant} className="flex items-center gap-1">
               {trend === 'up' ? (
                 <TrendingUp className="h-3 w-3" />
@@ -40,14 +40,11 @@ export const StatsCard: React.FC<StatsCardProps> = ({
               )}
               <span>{Math.abs(change)}%</span>
             </Badge>
-            {subtitle && (
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
-            )}
-          </div>
-        )}
-        {!change && subtitle && (
-          <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
-        )}
+          )}
+          {subtitle && (
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
