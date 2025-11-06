@@ -324,11 +324,16 @@ class BackendAPIClient:
             f"/api/v1/articles/{article_id}/update"
         )
     
-    async def check_article(self, article_id: str) -> Dict[str, Any]:
-        """Проверить статус артикула на OZON"""
+    async def get_article_price_history(
+        self,
+        article_id: str,
+        days: int = 2
+    ) -> Dict[str, Any]:
+        """Получить историю цен артикула"""
         return await self._request(
             "GET",
-            f"/api/v1/articles/{article_id}/check"
+            f"/api/v1/articles/{article_id}/price-history",
+            params={"days": days}
         )
 
     # ==================== Comparison ====================

@@ -513,8 +513,32 @@ async def callback_article_view(callback: CallbackQuery):
             )
             return
         
+        # Получаем предыдущие цены из истории (за последние 2 дня)
+        previous_prices = None
+        try:
+            price_history = await api_client.get_article_price_history(article_id, days=2)
+            if price_history and price_history.get("history"):
+                history = price_history.get("history", [])
+                # Берем предпоследнюю запись (если есть)
+                if len(history) >= 2:
+                    prev_record = history[1]  # Вторая запись (предыдущая)
+                    previous_prices = {
+                        "normal_price": prev_record.get("normal_price"),
+                        "ozon_card_price": prev_record.get("ozon_card_price")
+                    }
+                elif len(history) == 1:
+                    # Если только одна запись, используем её как предыдущую
+                    prev_record = history[0]
+                    previous_prices = {
+                        "normal_price": prev_record.get("normal_price"),
+                        "ozon_card_price": prev_record.get("ozon_card_price")
+                    }
+        except Exception as e:
+            logger.debug(f"Could not fetch price history for article {article_id}: {e}")
+            previous_prices = None
+        
         # Форматируем информацию
-        text = format_article_info(article)
+        text = format_article_info(article, previous_prices=previous_prices)
         
         await callback.message.answer(
             text=truncate_text(text),
@@ -544,9 +568,33 @@ async def callback_article_update(callback: CallbackQuery):
         # Обновляем артикул
         article = await api_client.update_article(article_id)
         
+        # Получаем предыдущие цены из истории (за последние 2 дня)
+        previous_prices = None
+        try:
+            price_history = await api_client.get_article_price_history(article_id, days=2)
+            if price_history and price_history.get("history"):
+                history = price_history.get("history", [])
+                # Берем предпоследнюю запись (если есть)
+                if len(history) >= 2:
+                    prev_record = history[1]  # Вторая запись (предыдущая)
+                    previous_prices = {
+                        "normal_price": prev_record.get("normal_price"),
+                        "ozon_card_price": prev_record.get("ozon_card_price")
+                    }
+                elif len(history) == 1:
+                    # Если только одна запись, используем её как предыдущую
+                    prev_record = history[0]
+                    previous_prices = {
+                        "normal_price": prev_record.get("normal_price"),
+                        "ozon_card_price": prev_record.get("ozon_card_price")
+                    }
+        except Exception as e:
+            logger.debug(f"Could not fetch price history for article {article_id}: {e}")
+            previous_prices = None
+        
         # Форматируем ответ
         text = "✅ <b>Данные обновлены</b>\n\n"
-        text += format_article_info(article)
+        text += format_article_info(article, previous_prices=previous_prices)
         
         await callback.message.edit_text(
             text=truncate_text(text),
