@@ -517,25 +517,73 @@ async def callback_article_view(callback: CallbackQuery):
         previous_prices = None
         try:
             price_history = await api_client.get_article_price_history(article_id, days=2)
+            logger.debug(f"Price history response: {price_history}")
+            
             if price_history and price_history.get("history"):
                 history = price_history.get("history", [])
-                # Берем предпоследнюю запись (если есть)
+                logger.debug(f"Found {len(history)} history records")
+                
+                # История отсортирована по убыванию даты (DESC), первая запись - самая новая
+                # Нужно найти предыдущую запись (не самую новую)
                 if len(history) >= 2:
-                    prev_record = history[1]  # Вторая запись (предыдущая)
+                    # Берем вторую запись как предыдущую
+                    prev_record = history[1]
                     previous_prices = {
                         "normal_price": prev_record.get("normal_price"),
                         "ozon_card_price": prev_record.get("ozon_card_price")
                     }
+                    logger.debug(f"Using previous prices from history[1]: {previous_prices}")
                 elif len(history) == 1:
-                    # Если только одна запись, используем её как предыдущую
+                    # Если только одна запись, возможно это первая запись
+                    # Попробуем использовать её, но лучше сравнить даты
                     prev_record = history[0]
-                    previous_prices = {
-                        "normal_price": prev_record.get("normal_price"),
-                        "ozon_card_price": prev_record.get("ozon_card_price")
-                    }
+                    # Проверяем, не является ли это текущей ценой
+                    current_normal = article.get("normal_price")
+                    current_card = article.get("ozon_card_price")
+                    
+                    # Если цены отличаются, используем как предыдущую
+                    if (prev_record.get("normal_price") != current_normal or 
+                        prev_record.get("ozon_card_price") != current_card):
+                        previous_prices = {
+                            "normal_price": prev_record.get("normal_price"),
+                            "ozon_card_price": prev_record.get("ozon_card_price")
+                        }
+                        logger.debug(f"Using previous prices from single history record: {previous_prices}")
+            
+            # Если истории нет, пытаемся использовать last_check_data как fallback
+            if not previous_prices:
+                last_check = article.get("last_check_data")
+                if last_check and isinstance(last_check, dict):
+                    # Используем цены из last_check_data как предыдущие
+                    prev_normal = last_check.get("normal_price")
+                    prev_card = last_check.get("ozon_card_price")
+                    current_normal = article.get("normal_price")
+                    current_card = article.get("ozon_card_price")
+                    
+                    # Используем только если цены отличаются от текущих
+                    if (prev_normal and prev_normal != current_normal) or (prev_card and prev_card != current_card):
+                        previous_prices = {
+                            "normal_price": prev_normal,
+                            "ozon_card_price": prev_card
+                        }
+                        logger.debug(f"Using previous prices from last_check_data: {previous_prices}")
         except Exception as e:
-            logger.debug(f"Could not fetch price history for article {article_id}: {e}")
-            previous_prices = None
+            logger.warning(f"Could not fetch price history for article {article_id}: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
+            # Пробуем fallback на last_check_data
+            last_check = article.get("last_check_data")
+            if last_check and isinstance(last_check, dict):
+                prev_normal = last_check.get("normal_price")
+                prev_card = last_check.get("ozon_card_price")
+                current_normal = article.get("normal_price")
+                current_card = article.get("ozon_card_price")
+                
+                if (prev_normal and prev_normal != current_normal) or (prev_card and prev_card != current_card):
+                    previous_prices = {
+                        "normal_price": prev_normal,
+                        "ozon_card_price": prev_card
+                    }
         
         # Форматируем информацию
         text = format_article_info(article, previous_prices=previous_prices)
@@ -572,25 +620,73 @@ async def callback_article_update(callback: CallbackQuery):
         previous_prices = None
         try:
             price_history = await api_client.get_article_price_history(article_id, days=2)
+            logger.debug(f"Price history response: {price_history}")
+            
             if price_history and price_history.get("history"):
                 history = price_history.get("history", [])
-                # Берем предпоследнюю запись (если есть)
+                logger.debug(f"Found {len(history)} history records")
+                
+                # История отсортирована по убыванию даты (DESC), первая запись - самая новая
+                # Нужно найти предыдущую запись (не самую новую)
                 if len(history) >= 2:
-                    prev_record = history[1]  # Вторая запись (предыдущая)
+                    # Берем вторую запись как предыдущую
+                    prev_record = history[1]
                     previous_prices = {
                         "normal_price": prev_record.get("normal_price"),
                         "ozon_card_price": prev_record.get("ozon_card_price")
                     }
+                    logger.debug(f"Using previous prices from history[1]: {previous_prices}")
                 elif len(history) == 1:
-                    # Если только одна запись, используем её как предыдущую
+                    # Если только одна запись, возможно это первая запись
+                    # Попробуем использовать её, но лучше сравнить даты
                     prev_record = history[0]
-                    previous_prices = {
-                        "normal_price": prev_record.get("normal_price"),
-                        "ozon_card_price": prev_record.get("ozon_card_price")
-                    }
+                    # Проверяем, не является ли это текущей ценой
+                    current_normal = article.get("normal_price")
+                    current_card = article.get("ozon_card_price")
+                    
+                    # Если цены отличаются, используем как предыдущую
+                    if (prev_record.get("normal_price") != current_normal or 
+                        prev_record.get("ozon_card_price") != current_card):
+                        previous_prices = {
+                            "normal_price": prev_record.get("normal_price"),
+                            "ozon_card_price": prev_record.get("ozon_card_price")
+                        }
+                        logger.debug(f"Using previous prices from single history record: {previous_prices}")
+            
+            # Если истории нет, пытаемся использовать last_check_data как fallback
+            if not previous_prices:
+                last_check = article.get("last_check_data")
+                if last_check and isinstance(last_check, dict):
+                    # Используем цены из last_check_data как предыдущие
+                    prev_normal = last_check.get("normal_price")
+                    prev_card = last_check.get("ozon_card_price")
+                    current_normal = article.get("normal_price")
+                    current_card = article.get("ozon_card_price")
+                    
+                    # Используем только если цены отличаются от текущих
+                    if (prev_normal and prev_normal != current_normal) or (prev_card and prev_card != current_card):
+                        previous_prices = {
+                            "normal_price": prev_normal,
+                            "ozon_card_price": prev_card
+                        }
+                        logger.debug(f"Using previous prices from last_check_data: {previous_prices}")
         except Exception as e:
-            logger.debug(f"Could not fetch price history for article {article_id}: {e}")
-            previous_prices = None
+            logger.warning(f"Could not fetch price history for article {article_id}: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
+            # Пробуем fallback на last_check_data
+            last_check = article.get("last_check_data")
+            if last_check and isinstance(last_check, dict):
+                prev_normal = last_check.get("normal_price")
+                prev_card = last_check.get("ozon_card_price")
+                current_normal = article.get("normal_price")
+                current_card = article.get("ozon_card_price")
+                
+                if (prev_normal and prev_normal != current_normal) or (prev_card and prev_card != current_card):
+                    previous_prices = {
+                        "normal_price": prev_normal,
+                        "ozon_card_price": prev_card
+                    }
         
         # Форматируем ответ
         text = "✅ <b>Данные обновлены</b>\n\n"

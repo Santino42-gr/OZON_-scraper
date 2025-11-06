@@ -66,7 +66,13 @@ def format_price_with_dynamics(
     
     change = calculate_price_change(price, previous_price)
     if change:
-        text += f" {change['arrow']} {abs(change['abs_change']):,.0f} ₽ ({change['pct_change']:+.1f}%)"
+        # Красная стрелка вверх для роста, зеленая вниз для падения
+        if change['abs_change'] > 0:
+            # Рост цены - красный цвет через HTML тег
+            text += f" <span style='color:red'>🔺 {abs(change['abs_change']):,.0f} ₽ ({change['pct_change']:+.1f}%)</span>"
+        else:
+            # Падение цены - зеленый цвет
+            text += f" <span style='color:green'>🔻 {abs(change['abs_change']):,.0f} ₽ ({change['pct_change']:+.1f}%)</span>"
     
     return text + "\n"
 
