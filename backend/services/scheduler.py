@@ -95,7 +95,7 @@ async def update_comparison_snapshots():
                     article_id = member['article_id']
                     try:
                         # Обновляем данные артикула
-                        await article_service.check_article(article_id, user_id)
+                        await article_service.update_article_data(article_id)
                         logger.debug(f"  ✅ Article {article_id} updated")
                     except Exception as e:
                         logger.error(f"  ❌ Failed to update article {article_id}: {e}")
@@ -183,7 +183,7 @@ async def update_price_history():
 
             try:
                 # Обновляем данные артикула
-                await article_service.check_article(article_id, user_id)
+                await article_service.update_article_data(article_id)
                 success += 1
                 logger.debug(f"✅ Article {article_number} updated")
 

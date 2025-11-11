@@ -865,8 +865,8 @@ class ComparisonService:
                     if not has_price_data:
                         logger.info(f"Article {article_number} exists but has no price data, updating...")
                         try:
-                            # Используем check_article для обновления данных
-                            updated = await self.article_service.check_article(existing_article["id"])
+                            # Используем update_article_data для обновления данных
+                            updated = await self.article_service.update_article_data(existing_article["id"])
                             if updated:
                                 # Получаем обновленный артикул
                                 result = self.supabase.table("ozon_scraper_articles") \
@@ -885,6 +885,7 @@ class ComparisonService:
             article = await self.article_service.create_article(
                 user_id=user_id,
                 article_number=article_number,
+                report_frequency="once",  # По умолчанию для сравнений
                 fetch_data=scrape
             )
 
