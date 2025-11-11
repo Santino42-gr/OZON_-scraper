@@ -20,7 +20,8 @@ from loguru import logger
 
 from keyboards import (
     get_main_menu,
-    get_cancel_keyboard
+    get_cancel_keyboard,
+    get_report_frequency_keyboard
 )
 from services.api_client import get_api_client, APIError
 from utils.formatters import (
@@ -36,6 +37,7 @@ router = Router(name="comparison")
 class CompareStates(StatesGroup):
     waiting_for_own_article = State()
     waiting_for_competitor_article = State()
+    waiting_for_report_frequency = State()
 
 
 def validate_article_number(article: str) -> bool:
@@ -227,7 +229,7 @@ async def cmd_compare(message: Message, command: CommandObject, state: FSMContex
     await message.answer(
         text=(
             "⚖️ <b>Сравнение с конкурентом</b>\n\n"
-            "Шаг 1 из 2: Отправьте <b>артикул вашего товара</b>\n\n"
+            "Шаг 1 из 3: Отправьте <b>артикул вашего товара</b>\n\n"
             "📝 <i>Пример: 123456789</i>\n\n"
             "Или нажмите ❌ Отмена"
         ),
@@ -276,7 +278,7 @@ async def process_own_article(message: Message, state: FSMContext):
     await message.answer(
         text=(
             f"✅ Ваш товар: <code>{article_number}</code>\n\n"
-            "Шаг 2 из 2: Отправьте <b>артикул конкурента</b>\n\n"
+            "Шаг 2 из 3: Отправьте <b>артикул конкурента</b>\n\n"
             "📝 <i>Пример: 987654321</i>\n\n"
             "Или нажмите ❌ Отмена"
         ),
@@ -287,9 +289,7 @@ async def process_own_article(message: Message, state: FSMContext):
 
 @router.message(CompareStates.waiting_for_competitor_article)
 async def process_competitor_article(message: Message, state: FSMContext):
-    """Обработка ввода артикула конкурента и выполнение сравнения"""
-
-    user = message.from_user
+    """Обработка ввода артикула конкурента"""
 
     # Проверка на отмену
     if message.text and message.text == "❌ Отмена":
@@ -336,6 +336,66 @@ async def process_competitor_article(message: Message, state: FSMContext):
         )
         return
 
+    # Сохраняем артикул конкурента и переходим к выбору частоты
+    await state.update_data(competitor_article=competitor_article)
+    await state.set_state(CompareStates.waiting_for_report_frequency)
+    
+    await message.answer(
+        text=(
+            f"✅ Ваш товар: <code>{own_article}</code>\n"
+            f"✅ Конкурент: <code>{competitor_article}</code>\n\n"
+            "📅 <b>Шаг 3 из 3: Выберите частоту отчетов</b>\n\n"
+            "Как часто вы хотите получать обновления цен для этих артикулов?\n\n"
+            "• <b>1 раз в день</b> - каждое утро в 09:00\n"
+            "• <b>2 раза в день</b> - утром в 09:00 и днем в 15:00"
+        ),
+        reply_markup=get_report_frequency_keyboard(),
+        parse_mode="HTML"
+    )
+
+
+@router.message(CompareStates.waiting_for_report_frequency)
+async def process_report_frequency_and_compare(message: Message, state: FSMContext):
+    """Обработка выбора частоты отчетов и выполнение сравнения"""
+
+    user = message.from_user
+
+    # Проверка на отмену
+    if message.text and message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            text="❌ Сравнение отменено",
+            reply_markup=get_main_menu()
+        )
+        return
+
+    # Определяем частоту по тексту кнопки
+    report_frequency = None
+    if message.text and ("1️⃣" in message.text or "1 раз" in message.text):
+        report_frequency = "once"
+    elif message.text and ("2️⃣" in message.text or "2 раза" in message.text):
+        report_frequency = "twice"
+
+    if not report_frequency:
+        await message.answer(
+            text="Пожалуйста, выберите частоту отчетов из предложенных вариантов",
+            reply_markup=get_report_frequency_keyboard()
+        )
+        return
+
+    # Получаем сохраненные артикулы
+    data = await state.get_data()
+    own_article = data.get("own_article")
+    competitor_article = data.get("competitor_article")
+
+    if not own_article or not competitor_article:
+        await state.clear()
+        await message.answer(
+            text=format_error("Ошибка", "Потеряны артикулы. Начните сначала с /compare"),
+            parse_mode="HTML"
+        )
+        return
+
     try:
         api_client = get_api_client()
 
@@ -344,6 +404,7 @@ async def process_competitor_article(message: Message, state: FSMContext):
         user_id = user_data.get("id")
 
         if not user_id:
+            await state.clear()
             await message.answer(
                 text=format_error(
                     "Пользователь не найден",
@@ -361,12 +422,13 @@ async def process_competitor_article(message: Message, state: FSMContext):
                  "Это может занять до 30 секунд."
         )
 
-        # Выполняем сравнение
+        # Выполняем сравнение с выбранной частотой
         comparison = await api_client.quick_compare(
             user_id=user_id,
             own_article_number=own_article,
             competitor_article_number=competitor_article,
-            group_name=f"Сравнение {own_article} vs {competitor_article}"
+            group_name=f"Сравнение {own_article} vs {competitor_article}",
+            report_frequency=report_frequency
         )
 
         await loading_msg.delete()

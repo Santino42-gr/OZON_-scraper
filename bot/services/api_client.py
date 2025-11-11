@@ -346,7 +346,8 @@ class BackendAPIClient:
         user_id: str,
         own_article_number: str,
         competitor_article_number: str,
-        group_name: Optional[str] = None
+        group_name: Optional[str] = None,
+        report_frequency: str = "once"
     ) -> Dict[str, Any]:
         """
         Быстрое сравнение своего артикула с конкурентом
@@ -356,6 +357,7 @@ class BackendAPIClient:
             own_article_number: Артикул своего товара
             competitor_article_number: Артикул конкурента
             group_name: Название группы сравнения (опционально)
+            report_frequency: Частота отчетов ('once' или 'twice')
 
         Returns:
             Результат сравнения с метриками
@@ -368,8 +370,10 @@ class BackendAPIClient:
                 "own_article_number": own_article_number,
                 "competitor_article_number": competitor_article_number,
                 "group_name": group_name,
-                "scrape_now": True
-            }
+                "scrape_now": True,
+                "report_frequency": report_frequency
+            },
+            timeout=60  # Увеличиваем таймаут для сравнения
         )
 
     # ==================== Reports ====================
