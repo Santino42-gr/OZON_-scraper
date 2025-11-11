@@ -25,7 +25,8 @@ from keyboards import (
     get_cancel_keyboard,
     get_articles_list_keyboard,
     get_article_actions_keyboard,
-    get_delete_confirmation_keyboard
+    get_delete_confirmation_keyboard,
+    get_report_frequency_keyboard
 )
 from services.api_client import get_api_client, APIError, APITimeoutError
 from utils.formatters import (
@@ -43,6 +44,7 @@ router = Router(name="articles")
 # FSM States для добавления артикула
 class AddArticleStates(StatesGroup):
     waiting_for_article_number = State()
+    waiting_for_report_frequency = State()
 
 
 def validate_article_number(article: str) -> bool:
@@ -116,10 +118,78 @@ async def process_article_number_input(message: Message, state: FSMContext):
         return
     
     article_number = message.text.strip() if message.text else ""
-    await process_add_article(message, article_number, state)
+    
+    # Валидация артикула
+    if not validate_article_number(article_number):
+        await message.answer(
+            text=format_error(
+                "Неверный формат артикула",
+                "Артикул должен содержать только цифры (5-12 символов)"
+            ),
+            parse_mode="HTML"
+        )
+        return
+    
+    # Сохраняем артикул в состояние и переходим к выбору частоты
+    await state.update_data(article_number=article_number)
+    await state.set_state(AddArticleStates.waiting_for_report_frequency)
+    
+    await message.answer(
+        text=(
+            "📅 <b>Выберите частоту отчетов</b>\n\n"
+            "Как часто вы хотите получать обновления цен?\n\n"
+            "• <b>1 раз в день</b> - каждое утро в 09:00\n"
+            "• <b>2 раза в день</b> - утром в 09:00 и днем в 15:00"
+        ),
+        reply_markup=get_report_frequency_keyboard(),
+        parse_mode="HTML"
+    )
 
 
-async def process_add_article(message: Message, article_number: str, state: FSMContext):
+@router.message(AddArticleStates.waiting_for_report_frequency)
+async def process_report_frequency_input(message: Message, state: FSMContext):
+    """Обработка выбора частоты отчетов"""
+    
+    # Проверка на отмену
+    if message.text and message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            text="❌ Добавление артикула отменено",
+            reply_markup=get_main_menu()
+        )
+        return
+    
+    # Определяем частоту по тексту кнопки
+    report_frequency = None
+    if message.text and ("1️⃣" in message.text or "1 раз" in message.text):
+        report_frequency = "once"
+    elif message.text and ("2️⃣" in message.text or "2 раза" in message.text):
+        report_frequency = "twice"
+    
+    if not report_frequency:
+        await message.answer(
+            text="Пожалуйста, выберите частоту отчетов из предложенных вариантов",
+            reply_markup=get_report_frequency_keyboard()
+        )
+        return
+    
+    # Получаем артикул из состояния
+    data = await state.get_data()
+    article_number = data.get("article_number")
+    
+    if not article_number:
+        await state.clear()
+        await message.answer(
+            text="Ошибка: артикул не найден. Начните заново.",
+            reply_markup=get_main_menu()
+        )
+        return
+    
+    # Создаем артикул с выбранной частотой
+    await process_add_article(message, article_number, state, report_frequency)
+
+
+async def process_add_article(message: Message, article_number: str, state: FSMContext, report_frequency: str = "once"):
     """
     Обработать добавление артикула
     
@@ -168,7 +238,8 @@ async def process_add_article(message: Message, article_number: str, state: FSMC
         
         article = await api_client.create_article(
             user_id=user_id,
-            article_number=article_number
+            article_number=article_number,
+            report_frequency=report_frequency
         )
         
         await loading_msg.delete()

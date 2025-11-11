@@ -218,6 +218,7 @@ class BackendAPIClient:
         self,
         user_id: str,
         article_number: str,
+        report_frequency: str = "once",
         timeout: Optional[int] = None
     ) -> Dict[str, Any]:
         """
@@ -226,6 +227,7 @@ class BackendAPIClient:
         Args:
             user_id: UUID пользователя
             article_number: Номер артикула OZON
+            report_frequency: Частота отчетов ('once' или 'twice')
             timeout: Таймаут в секундах (по умолчанию 60 для парсинга)
             
         Returns:
@@ -255,7 +257,8 @@ class BackendAPIClient:
                     url,
                     json={
                         "user_id": user_id,
-                        "article_number": article_number
+                        "article_number": article_number,
+                        "report_frequency": report_frequency
                     }
                 ) as response:
                     # Получаем тело ответа

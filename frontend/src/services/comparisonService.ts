@@ -63,24 +63,9 @@ export interface RatingDifference {
   recommendation: string;
 }
 
-export interface SPPDifference {
-  absolute: number;
-  percentage: number;
-  who_better: 'own' | 'competitor' | 'equal';
-  recommendation: string;
-}
-
-export interface ReviewsDifference {
-  absolute: number;
-  percentage: number;
-  who_more: 'own' | 'competitor' | 'equal';
-  recommendation: string;
-}
-
 export interface ComparisonMetrics {
   price: PriceDifference;
   rating: RatingDifference;
-  spp: SPPDifference;
   reviews: ReviewsDifference;
   competitiveness_index: number;
   grade: 'A' | 'B' | 'C' | 'D' | 'F';
@@ -99,9 +84,6 @@ export interface ArticleComparisonData {
   average_price_7days?: number;
   rating?: number;
   reviews_count?: number;
-  spp1?: number;
-  spp2?: number;
-  spp_total?: number;
   available: boolean;
   image_url?: string;
   product_url?: string;

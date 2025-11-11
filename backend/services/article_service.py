@@ -157,6 +157,7 @@ class ArticleService:
         self,
         user_id: str,
         article_number: str,
+        report_frequency: str = "once",
         fetch_data: bool = True
     ) -> ArticleResponse:
         """
@@ -223,14 +224,6 @@ class ArticleService:
                         "checked_at": datetime.now().isoformat()
                     }
             
-            # Рассчитываем СПП метрики если есть данные
-            from services.spp_calculator import calculate_spp_metrics
-            spp_metrics = calculate_spp_metrics(
-                product.average_price_7days if product else None,
-                product.normal_price if product else None,
-                product.ozon_card_price if product else None
-            ) if product else {"spp1": None, "spp2": None, "spp_total": None}
-            
             # Преобразуем HttpUrl в строки для сохранения
             image_url_str = str(product.image_url) if product and product.image_url else None
             product_url_str = str(product.url) if product and product.url else None
@@ -239,6 +232,7 @@ class ArticleService:
             article_data = {
                 "user_id": user_id,
                 "article_number": article_number,
+                "report_frequency": report_frequency,
                 "status": status,
                 "last_check_data": last_check_data,
                 "is_problematic": is_problematic,
@@ -256,9 +250,6 @@ class ArticleService:
                 "available": product.available if product else True,
                 "image_url": image_url_str,
                 "product_url": product_url_str,
-                "spp1": spp_metrics.get("spp1"),
-                "spp2": spp_metrics.get("spp2"),
-                "spp_total": spp_metrics.get("spp_total"),
                 "last_check": datetime.now().isoformat() if product else None,
                 "price_updated_at": datetime.now().isoformat() if product else None
             }
@@ -453,15 +444,7 @@ class ArticleService:
                 last_check_data = {
                     "error": str(e),
                     "checked_at": datetime.now().isoformat()
-                }
-            
-            # Рассчитываем СПП метрики если есть данные
-            from services.spp_calculator import calculate_spp_metrics
-            spp_metrics = calculate_spp_metrics(
-                product.average_price_7days if product else None,
-                product.normal_price if product else None,
-                product.ozon_card_price if product else None
-            ) if product else {"spp1": None, "spp2": None, "spp_total": None}
+                    }
             
             # Преобразуем HttpUrl в строки для сохранения
             image_url_str = str(product.image_url) if product and product.image_url else None
@@ -485,9 +468,6 @@ class ArticleService:
                 "available": product.available if product else True,
                 "image_url": image_url_str,
                 "product_url": product_url_str,
-                "spp1": spp_metrics.get("spp1"),
-                "spp2": spp_metrics.get("spp2"),
-                "spp_total": spp_metrics.get("spp_total"),
                 "last_check": datetime.now().isoformat() if product else None,
                 "price_updated_at": datetime.now().isoformat() if product else None
             }

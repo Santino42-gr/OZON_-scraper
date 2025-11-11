@@ -25,8 +25,8 @@ services:
       sh -c "
         echo 'Installing cron...' &&
         apk add --no-cache dcron &&
-        echo '0 3 * * * cd /app && python -m cron_jobs.price_history_collector >> /var/log/cron.log 2>&1' > /etc/crontabs/root &&
-        echo '0 4 * * 0 cd /app && python -m cron_jobs.cleanup_old_data >> /var/log/cron.log 2>&1' >> /etc/crontabs/root &&
+        echo '0 9 * * * cd /app && python -m cron_jobs.price_updater >> /var/log/cron.log 2>&1' > /etc/crontabs/root &&
+        echo '0 15 * * * cd /app && python -m cron_jobs.price_updater >> /var/log/cron.log 2>&1' >> /etc/crontabs/root &&
         echo 'Cron jobs configured:' &&
         cat /etc/crontabs/root &&
         echo 'Starting cron daemon...' &&
@@ -38,18 +38,16 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       
+      # Telegram Bot Token для уведомлений
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      
+      # Parser Market API
+      - PARSER_MARKET_API_KEY=${PARSER_MARKET_API_KEY}
+      - PARSER_MARKET_REGION=${PARSER_MARKET_REGION:-ru}
+      
       # Cron конфигурация
       - OZON_SCRAPER_BATCH_SIZE=${OZON_SCRAPER_BATCH_SIZE:-10}
       - OZON_SCRAPER_DELAY=${OZON_SCRAPER_DELAY:-5}
-      
-      # Playwright
-      - PLAYWRIGHT_HEADLESS=${PLAYWRIGHT_HEADLESS:-true}
-      - PLAYWRIGHT_TIMEOUT=${PLAYWRIGHT_TIMEOUT:-30000}
-      
-      # Rate limiting
-      - OZON_RATE_LIMIT=${OZON_RATE_LIMIT:-10}
-      - OZON_TIMEOUT=${OZON_TIMEOUT:-30}
-      - OZON_CACHE_TTL=${OZON_CACHE_TTL:-3600}
     
     volumes:
       - ./backend:/app

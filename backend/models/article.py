@@ -17,20 +17,19 @@ class ArticleBase(BaseModel):
     normal_price: Optional[float] = Field(None, description="Цена без Ozon карты")
     ozon_card_price: Optional[float] = Field(None, description="Цена с Ozon картой")
     average_price_7days: Optional[float] = Field(None, description="Средняя цена за 7 дней")
-    spp1: Optional[float] = Field(None, description="СПП1 - скидка от средней до обычной цены (%)")
-    spp2: Optional[float] = Field(None, description="СПП2 - скидка Ozon Card (%)")
-    spp_total: Optional[float] = Field(None, description="СПП Общий - общая скидка (%)")
     rating: Optional[float] = Field(None, description="Рейтинг товара")
     reviews_count: Optional[int] = Field(None, description="Количество отзывов")
     available: bool = Field(True, description="Наличие товара")
     image_url: Optional[str] = Field(None, description="URL изображения товара")
     product_url: Optional[str] = Field(None, description="URL страницы товара")
+    report_frequency: Optional[str] = Field("once", description="Частота отчетов: 'once' (09:00) или 'twice' (09:00 и 15:00)")
 
 
 class ArticleCreate(BaseModel):
     """Модель для создания артикула"""
     article_number: str = Field(..., description="Артикул товара OZON", min_length=1)
     user_id: str = Field(..., description="ID пользователя")
+    report_frequency: Optional[str] = Field("once", description="Частота отчетов: 'once' или 'twice'")
 
 
 class ArticleUpdate(BaseModel):
@@ -41,15 +40,13 @@ class ArticleUpdate(BaseModel):
     normal_price: Optional[float] = None
     ozon_card_price: Optional[float] = None
     average_price_7days: Optional[float] = None
-    spp1: Optional[float] = None
-    spp2: Optional[float] = None
-    spp_total: Optional[float] = None
     price_updated_at: Optional[datetime] = None
     rating: Optional[float] = None
     reviews_count: Optional[int] = None
     available: Optional[bool] = None
     image_url: Optional[str] = None
     product_url: Optional[str] = None
+    report_frequency: Optional[str] = None
 
 
 class ArticleResponse(ArticleBase):

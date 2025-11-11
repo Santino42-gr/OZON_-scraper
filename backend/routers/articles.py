@@ -52,15 +52,6 @@ async def create_article(article: ArticleCreate):
                 detail="Товар не найден в OZON"
             )
         
-        # Рассчитываем СПП метрики
-        # Note: average_price_7days будет None для новых артикулов (нет истории)
-        from services.spp_calculator import calculate_spp_metrics
-        spp_metrics = calculate_spp_metrics(
-            product_info.average_price_7days,
-            product_info.normal_price,
-            product_info.ozon_card_price
-        )
-        
         # Сохраняем в БД
         # Конвертируем HttpUrl объекты в строки для сериализации
         image_url_str = str(product_info.image_url) if product_info.image_url else None
@@ -79,15 +70,13 @@ async def create_article(article: ArticleCreate):
         data = {
             "article_number": article.article_number,
             "user_id": article.user_id,
+            "report_frequency": article.report_frequency or "once",
             "name": product_info.name,
             "price": product_info.price,
             "old_price": product_info.old_price,
             "normal_price": product_info.normal_price,
             "ozon_card_price": product_info.ozon_card_price,
             "average_price_7days": product_info.average_price_7days,
-            "spp1": spp_metrics["spp1"],
-            "spp2": spp_metrics["spp2"],
-            "spp_total": spp_metrics["spp_total"],
             "rating": product_info.rating,
             "reviews_count": product_info.reviews_count,
             "available": product_info.available,
@@ -382,14 +371,6 @@ async def check_article(article_id: str):
                 error="Товар не найден в OZON"
             )
         
-        # Рассчитываем СПП метрики
-        from services.spp_calculator import calculate_spp_metrics
-        spp_metrics = calculate_spp_metrics(
-            product_info.average_price_7days,
-            product_info.normal_price,
-            product_info.ozon_card_price
-        )
-        
         # Обновляем данные в БД
         # Конвертируем HttpUrl объекты в строки для сериализации
         image_url_str = str(product_info.image_url) if product_info.image_url else None
@@ -418,9 +399,6 @@ async def check_article(article_id: str):
             "image_url": image_url_str,
             "product_url": product_url_str,
             "last_check_data": last_check_data,
-            "spp1": spp_metrics.get("spp1"),
-            "spp2": spp_metrics.get("spp2"),
-            "spp_total": spp_metrics.get("spp_total"),
             "last_check": checked_at.isoformat(),
             "price_updated_at": checked_at.isoformat(),
             "updated_at": checked_at.isoformat()

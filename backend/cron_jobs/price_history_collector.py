@@ -31,7 +31,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from loguru import logger
 from database import get_supabase_client
 from services.parser_market_client import ParserMarketClient
-from services.spp_calculator import calculate_spp_metrics
 from config import settings
 
 
@@ -125,13 +124,6 @@ class PriceHistoryCollector:
                 logger.warning(f"No data found for article: {article}")
                 return None
 
-            # Рассчитываем СПП метрики
-            spp_metrics = calculate_spp_metrics(
-                product_info.average_price_7days,
-                product_info.normal_price,
-                product_info.ozon_card_price
-            )
-
             # Формируем данные для записи в БД
             price_data = {
                 "article_number": article,
@@ -139,9 +131,6 @@ class PriceHistoryCollector:
                 "normal_price": product_info.normal_price,
                 "ozon_card_price": product_info.ozon_card_price,
                 "old_price": product_info.old_price,
-                "spp1": spp_metrics["spp1"],
-                "spp2": spp_metrics["spp2"],
-                "spp_total": spp_metrics["spp_total"],
                 "product_available": product_info.available,
                 "rating": product_info.rating,
                 "reviews_count": product_info.reviews_count,
@@ -152,8 +141,7 @@ class PriceHistoryCollector:
             }
 
             logger.info(
-                f"✅ Successfully parsed {article}: price={price_data['price']}, "
-                f"spp_total={spp_metrics['spp_total']}"
+                f"✅ Successfully parsed {article}: price={price_data['price']}"
             )
             return price_data
 

@@ -385,52 +385,6 @@ class OzonSearchResult(BaseModel):
         }
 
 
-# ==================== СПП Метрики ====================
-
-class SPPMetrics(BaseModel):
-    """
-    Показатели скидки (СПП)
-    
-    СПП1 - скидка от средней цены за 7 дней до обычной цены
-    СПП2 - скидка Ozon Card (от обычной цены до цены с картой)
-    СПП Общий - общая скидка (от средней за 7 дней до цены с картой)
-    """
-    spp1: Optional[float] = Field(None, ge=-100, le=100, description="СПП1 (%)")
-    spp2: Optional[float] = Field(None, ge=-100, le=100, description="СПП2 (%)")
-    spp_total: Optional[float] = Field(None, ge=-100, le=100, description="СПП Общий (%)")
-    
-    def format_spp(self, value: Optional[float]) -> str:
-        """
-        Форматировать значение СПП
-        
-        Args:
-            value: Значение СПП или None
-            
-        Returns:
-            Отформатированная строка с процентами или "Н/Д"
-        """
-        if value is None:
-            return "Н/Д"
-        return f"{value:.1f}%"
-    
-    def to_dict_formatted(self) -> dict:
-        """Вернуть словарь с отформатированными значениями"""
-        return {
-            "spp1": self.format_spp(self.spp1),
-            "spp2": self.format_spp(self.spp2),
-            "spp_total": self.format_spp(self.spp_total)
-        }
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "spp1": 24.4,
-                "spp2": 9.9,
-                "spp_total": 31.9
-            }
-        }
-
-
 # ==================== Ошибки ====================
 
 class OzonAPIError(BaseModel):

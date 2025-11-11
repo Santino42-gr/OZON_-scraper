@@ -6,7 +6,8 @@ Keyboards package
 from .reply import (
     get_main_menu,
     get_cancel_keyboard,
-    get_confirmation_keyboard
+    get_confirmation_keyboard,
+    get_report_frequency_keyboard
 )
 
 from .inline import (
@@ -22,6 +23,7 @@ __all__ = [
     "get_main_menu",
     "get_cancel_keyboard",
     "get_confirmation_keyboard",
+    "get_report_frequency_keyboard",
     
     # Inline keyboards
     "get_article_actions_keyboard",

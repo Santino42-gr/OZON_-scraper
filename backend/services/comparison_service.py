@@ -33,7 +33,6 @@ from models.comparison import (
     ComparisonMetrics,
     PriceDifference,
     RatingDifference,
-    SPPDifference,
     ReviewsDifference,
     ComparisonSnapshotResponse,
     ComparisonHistoryResponse,
@@ -73,10 +72,9 @@ class ComparisonService:
 
     # Константы для расчета индекса конкурентоспособности
     WEIGHTS = {
-        'price': 0.35,       # 35% - цена важнее всего
-        'rating': 0.25,      # 25% - рейтинг
-        'spp': 0.20,         # 20% - СПП
-        'reviews': 0.10,     # 10% - количество отзывов
+        'price': 0.45,       # 45% - цена важнее всего
+        'rating': 0.30,      # 30% - рейтинг
+        'reviews': 0.15,     # 15% - количество отзывов
         'availability': 0.10  # 10% - наличие
     }
 
@@ -313,9 +311,6 @@ class ComparisonService:
                     average_price_7days=article_data['average_price_7days'],
                     rating=article_data['current_rating'],
                     reviews_count=article_data['reviews_count'],
-                    spp1=article_data['spp1'],
-                    spp2=article_data['spp2'],
-                    spp_total=article_data['spp_total'],
                     available=article_data['available'],
                     image_url=article_data['image_url'],
                     product_url=article_data['product_url'],
@@ -444,27 +439,23 @@ class ComparisonService:
         # 2. Разница в рейтингах
         rating_diff = self._calculate_rating_difference(own, competitor)
 
-        # 3. Разница в СПП
-        spp_diff = self._calculate_spp_difference(own, competitor)
-
-        # 4. Разница в отзывах
+        # 3. Разница в отзывах
         reviews_diff = self._calculate_reviews_difference(own, competitor)
 
-        # 5. Индекс конкурентоспособности
+        # 4. Индекс конкурентоспособности
         comp_index = self._calculate_competitiveness_index(own, competitor)
 
-        # 6. Грейд
+        # 5. Грейд
         grade = self._get_grade(comp_index)
 
-        # 7. Общая рекомендация
+        # 6. Общая рекомендация
         overall_rec = self._generate_overall_recommendation(
-            price_diff, rating_diff, spp_diff, reviews_diff, comp_index, grade
+            price_diff, rating_diff, reviews_diff, comp_index, grade
         )
 
         return ComparisonMetrics(
             price=price_diff,
             rating=rating_diff,
-            spp=spp_diff,
             reviews=reviews_diff,
             competitiveness_index=comp_index,
             grade=grade,
@@ -548,43 +539,6 @@ class ComparisonService:
             recommendation=recommendation
         )
 
-    def _calculate_spp_difference(
-        self,
-        own: ArticleComparisonData,
-        competitor: ArticleComparisonData
-    ) -> SPPDifference:
-        """Расчет разницы в СПП"""
-        own_spp = own.spp_total or 0
-        comp_spp = competitor.spp_total or 0
-
-        if own_spp == 0 and comp_spp == 0:
-            return SPPDifference(
-                absolute=0,
-                percentage=0,
-                who_better="equal",
-                recommendation="Нет данных о СПП"
-            )
-
-        absolute = own_spp - comp_spp
-        percentage = (absolute / comp_spp * 100) if comp_spp != 0 else 0
-
-        if abs(absolute) < 1:
-            who_better = "equal"
-            recommendation = "СПП примерно равны"
-        elif absolute > 0:
-            who_better = "own"
-            recommendation = f"Отлично! Ваш СПП выше на {absolute:.1f}%"
-        else:
-            who_better = "competitor"
-            recommendation = f"Увеличьте скидки - СПП ниже на {abs(absolute):.1f}%"
-
-        return SPPDifference(
-            absolute=round(absolute, 2),
-            percentage=round(percentage, 2),
-            who_better=who_better,
-            recommendation=recommendation
-        )
-
     def _calculate_reviews_difference(
         self,
         own: ArticleComparisonData,
@@ -660,16 +614,7 @@ class ComparisonService:
         else:
             scores['rating'] = 0.5
 
-        # 3. СПП (выше = лучше)
-        own_spp = own.spp_total or 0
-        comp_spp = competitor.spp_total or 0
-
-        if own_spp > 0:
-            scores['spp'] = min(1.0, own_spp / 30.0)  # 30% СПП = максимум
-        else:
-            scores['spp'] = 0.3
-
-        # 4. Отзывы (больше = лучше, но с насыщением)
+        # 3. Отзывы (больше = лучше, но с насыщением)
         own_reviews = own.reviews_count or 0
         comp_reviews = competitor.reviews_count or 0
 
@@ -680,7 +625,7 @@ class ComparisonService:
         else:
             scores['reviews'] = 0.1
 
-        # 5. Наличие
+        # 4. Наличие
         scores['availability'] = 1.0 if own.available else 0.0
 
         # Взвешенная сумма
@@ -705,7 +650,6 @@ class ComparisonService:
         self,
         price_diff: PriceDifference,
         rating_diff: RatingDifference,
-        spp_diff: SPPDifference,
         reviews_diff: ReviewsDifference,
         index: float,
         grade: CompetitivenessGrade
@@ -713,15 +657,12 @@ class ComparisonService:
         """Генерация общей рекомендации"""
         recommendations = []
 
-        # Приоритет: цена > рейтинг > СПП > отзывы
+        # Приоритет: цена > рейтинг > отзывы
         if price_diff.who_cheaper == "competitor":
             recommendations.append("🔴 Снизьте цену")
 
         if rating_diff.who_better == "competitor":
             recommendations.append("⚠️ Улучшайте качество товара")
-
-        if spp_diff.who_better == "competitor":
-            recommendations.append("📊 Увеличьте СПП")
 
         if reviews_diff.who_more == "competitor" and reviews_diff.percentage < -50:
             recommendations.append("💬 Стимулируйте отзывы")
@@ -750,8 +691,10 @@ class ComparisonService:
             metrics_data = {
                 "price": metrics.price.dict(),
                 "rating": metrics.rating.dict(),
-                "spp": metrics.spp.dict(),
-                "reviews": metrics.reviews.dict()
+                "reviews": metrics.reviews.dict(),
+                "competitiveness_index": metrics.competitiveness_index,
+                "grade": metrics.grade.value,
+                "overall_recommendation": metrics.overall_recommendation
             }
 
             # Вызываем SQL функцию

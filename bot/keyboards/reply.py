@@ -74,3 +74,29 @@ def get_confirmation_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True
     )
 
+
+def get_report_frequency_keyboard() -> ReplyKeyboardMarkup:
+    """
+    Клавиатура выбора частоты отчетов
+    
+    Returns:
+        ReplyKeyboardMarkup с вариантами частоты отчетов
+    """
+    builder = ReplyKeyboardBuilder()
+    
+    builder.row(
+        KeyboardButton(text="1️⃣ 1 раз в день (09:00)")
+    )
+    
+    builder.row(
+        KeyboardButton(text="2️⃣ 2 раза в день (09:00 и 15:00)")
+    )
+    
+    builder.row(
+        KeyboardButton(text="❌ Отмена")
+    )
+    
+    return builder.as_markup(
+        resize_keyboard=True
+    )
+

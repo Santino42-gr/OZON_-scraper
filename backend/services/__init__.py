@@ -9,7 +9,6 @@ from .user_service import UserService, get_user_service
 from .report_service import ReportService, get_report_service
 from .ozon_service import OzonService, get_ozon_service
 from .parser_market_client import ParserMarketClient, get_parser_market_client
-from .spp_calculator import calculate_spp_metrics
 
 __all__ = [
     # Article Service
@@ -31,7 +30,4 @@ __all__ = [
     # Parser Market Client
     "ParserMarketClient",
     "get_parser_market_client",
-
-    # SPP Calculator
-    "calculate_spp_metrics",
 ]

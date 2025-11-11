@@ -109,14 +109,6 @@ class RatingDifference(BaseModel):
     recommendation: Optional[str] = Field(None, description="Рекомендация по рейтингу")
 
 
-class SPPDifference(BaseModel):
-    """Модель разницы в СПП"""
-    absolute: float = Field(..., description="Абсолютная разница в СПП (%)")
-    percentage: float = Field(..., description="Разница в процентах")
-    who_better: Literal["own", "competitor", "equal"] = Field(..., description="У кого больше СПП")
-    recommendation: Optional[str] = Field(None, description="Рекомендация по СПП")
-
-
 class ReviewsDifference(BaseModel):
     """Модель разницы в отзывах"""
     absolute: int = Field(..., description="Абсолютная разница в количестве")
@@ -129,7 +121,6 @@ class ComparisonMetrics(BaseModel):
     """Все метрики сравнения"""
     price: PriceDifference = Field(..., description="Разница в ценах")
     rating: RatingDifference = Field(..., description="Разница в рейтингах")
-    spp: SPPDifference = Field(..., description="Разница в СПП")
     reviews: ReviewsDifference = Field(..., description="Разница в отзывах")
     competitiveness_index: float = Field(..., description="Индекс конкурентоспособности (0-1)", ge=0, le=1)
     grade: CompetitivenessGrade = Field(..., description="Грейд конкурентоспособности")
@@ -157,9 +148,6 @@ class ArticleComparisonData(BaseModel):
     # Метрики
     rating: Optional[float] = Field(None, description="Рейтинг")
     reviews_count: Optional[int] = Field(None, description="Количество отзывов")
-    spp1: Optional[float] = Field(None, description="СПП1 (%)")
-    spp2: Optional[float] = Field(None, description="СПП2 (%)")
-    spp_total: Optional[float] = Field(None, description="СПП Общий (%)")
 
     # Дополнительно
     available: bool = Field(True, description="Наличие")

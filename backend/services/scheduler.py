@@ -94,7 +94,7 @@ async def update_comparison_snapshots():
                 for member in members_result.data:
                     article_id = member['article_id']
                     try:
-                        # Обновляем данные артикула (scrape + SPP)
+                        # Обновляем данные артикула
                         await article_service.check_article(article_id, user_id)
                         logger.debug(f"  ✅ Article {article_id} updated")
                     except Exception as e:
