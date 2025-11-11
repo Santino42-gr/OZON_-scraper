@@ -1,9 +1,10 @@
 -- =====================================================
--- Fix: Обновление функции get_group_comparison
--- для извлечения цен из last_check_data если поля NULL
--- БЕЗ СПП (удалены все упоминания СПП)
+-- Migration: 013 - Fix get_group_comparison remove SPP
+-- Description: Удаление СПП из функции get_group_comparison
+-- Date: 2025-01-XX
 -- =====================================================
 
+-- Обновляем функцию get_group_comparison, удаляя все упоминания СПП
 CREATE OR REPLACE FUNCTION get_group_comparison(p_group_id UUID)
 RETURNS TABLE (
     article_id UUID,
@@ -85,6 +86,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-COMMENT ON FUNCTION get_group_comparison IS
-    'Получает все артикулы группы с актуальными данными для сравнения. Извлекает данные из отдельных полей или из last_check_data если поля NULL. БЕЗ СПП.';
+COMMENT ON FUNCTION get_group_comparison IS 
+    'Получает все артикулы группы с актуальными данными для сравнения (без СПП)';
 

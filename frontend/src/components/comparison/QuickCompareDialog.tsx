@@ -15,6 +15,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Scale, AlertCircle } from 'lucide-react';
 import { comparisonApi, QuickComparisonCreate, ComparisonResponse } from '@/services/comparisonService';
@@ -39,6 +46,7 @@ export const QuickCompareDialog: React.FC<QuickCompareDialogProps> = ({
     competitor_article_number: '',
     group_name: '',
     scrape_now: true,
+    report_frequency: 'once',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,6 +64,7 @@ export const QuickCompareDialog: React.FC<QuickCompareDialogProps> = ({
         competitor_article_number: '',
         group_name: '',
         scrape_now: true,
+        report_frequency: 'once',
       });
 
       if (onSuccess) {
@@ -70,6 +79,10 @@ export const QuickCompareDialog: React.FC<QuickCompareDialogProps> = ({
 
   const handleChange = (field: keyof QuickComparisonCreate, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSelectChange = (value: string) => {
+    handleChange('report_frequency', value);
   };
 
   return (
@@ -140,6 +153,29 @@ export const QuickCompareDialog: React.FC<QuickCompareDialogProps> = ({
             />
             <p className="text-xs text-muted-foreground">
               По умолчанию: "{formData.own_article_number} vs {formData.competitor_article_number}"
+            </p>
+          </div>
+
+          {/* Report Frequency */}
+          <div className="space-y-2">
+            <Label htmlFor="frequency">
+              Частота отчетов <span className="text-muted-foreground text-xs">(для создаваемых артикулов)</span>
+            </Label>
+            <Select
+              value={formData.report_frequency || 'once'}
+              onValueChange={handleSelectChange}
+              disabled={loading}
+            >
+              <SelectTrigger id="frequency">
+                <SelectValue placeholder="Выберите частоту отчетов" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="once">1 раз в день (09:00)</SelectItem>
+                <SelectItem value="twice">2 раза в день (09:00 и 15:00)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Как часто получать обновления цен для этих артикулов
             </p>
           </div>
 

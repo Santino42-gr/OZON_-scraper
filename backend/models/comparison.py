@@ -224,6 +224,7 @@ class QuickComparisonCreate(BaseModel):
     competitor_article_number: str = Field(..., description="Артикул конкурента")
     group_name: Optional[str] = Field(None, description="Название группы")
     scrape_now: bool = Field(True, description="Сразу получить данные с OZON")
+    report_frequency: Optional[str] = Field("once", description="Частота отчетов для создаваемых артикулов: 'once' или 'twice'")
 
 
 # =====================================================

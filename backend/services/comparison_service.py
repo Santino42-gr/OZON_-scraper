@@ -389,13 +389,15 @@ class ComparisonService:
             own_article = await self._get_or_create_article(
                 user_id,
                 quick_data.own_article_number,
-                scrape=quick_data.scrape_now
+                scrape=quick_data.scrape_now,
+                report_frequency=quick_data.report_frequency or "once"
             )
 
             competitor_article = await self._get_or_create_article(
                 user_id,
                 quick_data.competitor_article_number,
-                scrape=quick_data.scrape_now
+                scrape=quick_data.scrape_now,
+                report_frequency=quick_data.report_frequency or "once"
             )
 
             # 3. Добавляем в группу
@@ -827,7 +829,8 @@ class ComparisonService:
         self,
         user_id: str,
         article_number: str,
-        scrape: bool = True
+        scrape: bool = True,
+        report_frequency: str = "once"
     ):
         """
         Получить существующий артикул или создать новый
@@ -836,6 +839,7 @@ class ComparisonService:
             user_id: UUID пользователя
             article_number: Номер артикула
             scrape: Получить данные с OZON
+            report_frequency: Частота отчетов ('once' или 'twice')
 
         Returns:
             ArticleResponse: Артикул
@@ -885,7 +889,7 @@ class ComparisonService:
             article = await self.article_service.create_article(
                 user_id=user_id,
                 article_number=article_number,
-                report_frequency="once",  # По умолчанию для сравнений
+                report_frequency=report_frequency,
                 fetch_data=scrape
             )
 

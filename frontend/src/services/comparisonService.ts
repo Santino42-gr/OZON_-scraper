@@ -47,6 +47,7 @@ export interface QuickComparisonCreate {
   competitor_article_number: string;
   group_name?: string;
   scrape_now: boolean;
+  report_frequency?: 'once' | 'twice';
 }
 
 export interface PriceDifference {
