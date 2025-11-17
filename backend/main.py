@@ -96,9 +96,16 @@ async def startup_event():
     else:
         logger.error("❌ Database connection failed")
 
-    # Запуск планировщика задач
-    from services.scheduler import start_scheduler
-    start_scheduler()
+    # Запуск планировщика задач (ОТКЛЮЧЕНО для экономии расходов на API)
+    # Автоматические задачи мониторинга отключены по запросу клиента
+    # Для включения: установите ENABLE_SCHEDULER=true в переменных окружения
+    from config import settings
+    if settings.ENABLE_SCHEDULER:
+        from services.scheduler import start_scheduler
+        start_scheduler()
+        logger.info("✅ Scheduler enabled and started")
+    else:
+        logger.info("⚠️  Scheduler disabled (ENABLE_SCHEDULER=false). Automatic monitoring tasks are OFF.")
 
     logger.info("📚 API Documentation available at: /docs")
     logger.info("🔄 ReDoc available at: /redoc")
@@ -109,9 +116,11 @@ async def shutdown_event():
     """Действия при остановке приложения"""
     logger.info("🛑 Shutting down OZON Bot Backend API...")
 
-    # Остановка планировщика задач
-    from services.scheduler import stop_scheduler
-    stop_scheduler()
+    # Остановка планировщика задач (если был запущен)
+    from config import settings
+    if settings.ENABLE_SCHEDULER:
+        from services.scheduler import stop_scheduler
+        stop_scheduler()
 
 
 @app.get("/")

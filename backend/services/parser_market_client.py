@@ -193,7 +193,8 @@ class ParserMarketClient:
         self,
         article: str,
         userlabel: Optional[str] = None,
-        use_marketid: bool = True
+        use_marketid: bool = True,
+        disable_monitoring: bool = True
     ) -> Dict[str, Any]:
         """
         Отправить задачу на парсинг товара
@@ -202,6 +203,7 @@ class ParserMarketClient:
             article: Артикул товара Ozon
             userlabel: Уникальная метка задачи (по умолчанию генерируется автоматически)
             use_marketid: Если True - использует marketid (SKU ID), если False - productid (артикул продавца)
+            disable_monitoring: Если True - пытается отключить автоматический мониторинг (по умолчанию True)
 
         Returns:
             Dict с информацией о задаче:
@@ -210,6 +212,11 @@ class ParserMarketClient:
 
         Raises:
             ParserMarketAPIError: Ошибка отправки задачи
+
+        Note:
+            Параметр disable_monitoring пытается предотвратить создание автоматических заданий мониторинга.
+            Если Parser Market API не поддерживает этот параметр, задания мониторинга могут все равно создаваться.
+            В этом случае используйте методы get_all_tasks() и delete_task() для управления заданиями.
         """
         if not userlabel:
             userlabel = f"ozon_{article}_{int(datetime.now().timestamp())}"
@@ -251,6 +258,23 @@ class ParserMarketClient:
             "userlabel": userlabel,
             "products": [product]
         }
+
+        # Пытаемся добавить параметры для отключения автоматического мониторинга
+        # Parser Market API может поддерживать различные варианты этих параметров
+        if disable_monitoring:
+            # Возможные параметры для отключения мониторинга
+            monitoring_params = {
+                "disable_monitoring": True,
+                "no_monitoring": True,
+                "no_auto_monitoring": True,
+                "monitoring": False,
+                "auto_monitoring": False,
+                "schedule_monitoring": False,
+                "ordermail": ""  # Пустой email может отключить уведомления
+            }
+            
+            # Добавляем параметры в payload (Parser Market может игнорировать неизвестные)
+            payload.update(monitoring_params)
 
         try:
             logger.info(f"Submitting task | article={article} | userlabel={userlabel}")
@@ -333,6 +357,300 @@ class ParserMarketClient:
         except httpx.HTTPError as e:
             logger.error(f"Status check failed: {e}")
             raise ParserMarketAPIError(f"Failed to get task status: {e}")
+
+    async def get_all_tasks(
+        self,
+        limit: int = 1000
+    ) -> List[Dict[str, Any]]:
+        """
+        Получить все задания (включая задания мониторинга)
+
+        Args:
+            limit: Максимальное количество результатов (по умолчанию 1000)
+
+        Returns:
+            Список всех заданий с их статусами и метаданными
+
+        Raises:
+            ParserMarketAPIError: Ошибка получения заданий
+        """
+        try:
+            # Parser Market API возвращает до 50 заданий за раз
+            # Делаем несколько запросов для получения всех заданий
+            all_tasks = []
+            max_per_request = 50
+            offset = 0
+
+            while len(all_tasks) < limit:
+                request_limit = min(max_per_request, limit - len(all_tasks))
+                
+                payload = {
+                    "apikey": self.api_key,
+                    "limit": request_limit
+                }
+
+                response = await self.client.post(
+                    f"{self.BASE_URL}/get-last50",
+                    json=payload
+                )
+                response.raise_for_status()
+
+                result = self._parse_response(response.json())
+
+                if result.get("result") != "success":
+                    raise ParserMarketAPIError(f"Failed to get tasks: {result}")
+
+                tasks = result.get("data", [])
+                
+                if not tasks:
+                    break
+                
+                all_tasks.extend(tasks)
+                
+                # Если получили меньше чем запрашивали, значит больше нет
+                if len(tasks) < request_limit:
+                    break
+                
+                # Небольшая задержка между запросами
+                await asyncio.sleep(0.5)
+                offset += len(tasks)
+
+            logger.info(f"Retrieved {len(all_tasks)} tasks total")
+            return all_tasks[:limit]
+
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to get all tasks: {e}")
+            raise ParserMarketAPIError(f"Failed to get all tasks: {e}")
+
+    def filter_tasks_by_time(
+        self,
+        tasks: List[Dict[str, Any]],
+        start_hour: int = 6,
+        end_hour: int = 7
+    ) -> List[Dict[str, Any]]:
+        """
+        Фильтровать задания по времени выполнения
+
+        Args:
+            tasks: Список заданий
+            start_hour: Начальный час (0-23)
+            end_hour: Конечный час (0-23)
+
+        Returns:
+            Отфильтрованный список заданий, которые выполняются в указанное время
+        """
+        filtered = []
+        
+        for task in tasks:
+            # Парсим задание - оно может быть списком словарей или словарем
+            task_dict = self._parse_task_dict(task)
+            
+            # Проверяем поля, которые могут содержать время выполнения
+            # Parser Market может хранить время в разных форматах
+            received = task_dict.get("received")
+            started = task_dict.get("started")
+            
+            # Пытаемся извлечь час из временных меток
+            task_hour = None
+            
+            if received:
+                try:
+                    # Формат может быть "04.11.2025 17:29:46" или ISO
+                    if isinstance(received, str):
+                        if " " in received and ":" in received:
+                            # Формат "04.11.2025 17:29:46"
+                            time_part = received.split(" ")[-1]
+                            hour_str = time_part.split(":")[0]
+                            task_hour = int(hour_str)
+                        elif "T" in received:
+                            # ISO формат
+                            from datetime import datetime as dt
+                            dt_obj = dt.fromisoformat(received.replace("Z", "+00:00"))
+                            task_hour = dt_obj.hour
+                except (ValueError, IndexError, AttributeError):
+                    pass
+            
+            if task_hour is None and started:
+                try:
+                    if isinstance(started, str):
+                        if " " in started and ":" in started:
+                            time_part = started.split(" ")[-1]
+                            hour_str = time_part.split(":")[0]
+                            task_hour = int(hour_str)
+                        elif "T" in started:
+                            from datetime import datetime as dt
+                            dt_obj = dt.fromisoformat(started.replace("Z", "+00:00"))
+                            task_hour = dt_obj.hour
+                except (ValueError, IndexError, AttributeError):
+                    pass
+            
+            # Проверяем, попадает ли время в диапазон
+            if task_hour is not None:
+                if start_hour <= task_hour < end_hour:
+                    filtered.append(task)
+                elif start_hour > end_hour:  # Переход через полночь
+                    if task_hour >= start_hour or task_hour < end_hour:
+                        filtered.append(task)
+        
+        logger.info(
+            f"Filtered tasks | total={len(tasks)} | "
+            f"filtered={len(filtered)} | time_range={start_hour:02d}:00-{end_hour:02d}:00"
+        )
+        
+        return filtered
+
+    def _parse_task_dict(self, task: Any) -> Dict[str, Any]:
+        """
+        Преобразовать задание в словарь
+
+        Args:
+            task: Задание (может быть списком словарей или словарем)
+
+        Returns:
+            Словарь с данными задания
+        """
+        if isinstance(task, dict):
+            return task
+        elif isinstance(task, list):
+            # Если это список словарей, объединяем их
+            result = {}
+            for item in task:
+                if isinstance(item, dict):
+                    result.update(item)
+            return result
+        else:
+            return {}
+
+    async def delete_task(
+        self,
+        order_id: Optional[int] = None,
+        userlabel: Optional[str] = None
+    ) -> bool:
+        """
+        Удалить или отключить задание мониторинга
+
+        Args:
+            order_id: ID задания для удаления
+            userlabel: Метка задания для удаления
+
+        Returns:
+            True если задание успешно удалено/отключено, False иначе
+
+        Raises:
+            ParserMarketAPIError: Ошибка удаления задания
+
+        Note:
+            Parser Market API может не поддерживать удаление через API.
+            В этом случае необходимо обратиться в поддержку для отключения заданий.
+        """
+        if not order_id and not userlabel:
+            raise ValueError("Either order_id or userlabel must be provided")
+
+        # Пробуем различные возможные endpoints для удаления
+        # (Parser Market API может иметь разные варианты)
+        possible_endpoints = [
+            "/delete-order",
+            "/cancel-order",
+            "/disable-order",
+            "/remove-order"
+        ]
+
+        for endpoint in possible_endpoints:
+            try:
+                payload = {"apikey": self.api_key}
+                
+                if order_id:
+                    payload["orderid"] = order_id
+                    payload["orderidlist"] = [order_id]
+                
+                if userlabel:
+                    payload["userlabel"] = userlabel
+                    payload["userlabels"] = [userlabel]
+
+                response = await self.client.post(
+                    f"{self.BASE_URL}{endpoint}",
+                    json=payload
+                )
+                response.raise_for_status()
+
+                result = self._parse_response(response.json())
+
+                if result.get("result") == "success":
+                    logger.info(
+                        f"Task deleted successfully | "
+                        f"order_id={order_id} | userlabel={userlabel} | endpoint={endpoint}"
+                    )
+                    return True
+
+            except httpx.HTTPStatusError as e:
+                # 404 означает, что endpoint не существует
+                if e.response.status_code == 404:
+                    continue
+                else:
+                    logger.warning(
+                        f"Failed to delete via {endpoint} | "
+                        f"status={e.response.status_code} | error={e}"
+                    )
+            except httpx.HTTPError as e:
+                logger.debug(f"HTTP error for {endpoint}: {e}")
+                continue
+
+        # Если ни один endpoint не сработал, логируем предупреждение
+        logger.warning(
+            f"Could not delete task via API | "
+            f"order_id={order_id} | userlabel={userlabel} | "
+            f"Parser Market API may not support task deletion. "
+            f"Please contact Parser Market support to disable monitoring tasks."
+        )
+        return False
+
+    def extract_task_id(self, task: Dict[str, Any]) -> Optional[int]:
+        """
+        Извлечь ID задания из данных задания
+
+        Args:
+            task: Данные задания
+
+        Returns:
+            ID задания или None если не найден
+        """
+        task_dict = self._parse_task_dict(task)
+        
+        # Пробуем различные возможные поля для ID
+        possible_fields = ["id", "order_id", "orderid", "order-id", "task_id", "taskid"]
+        
+        for field in possible_fields:
+            if field in task_dict:
+                value = task_dict[field]
+                if value is not None:
+                    try:
+                        return int(value)
+                    except (ValueError, TypeError):
+                        continue
+        
+        return None
+
+    def extract_userlabel(self, task: Dict[str, Any]) -> Optional[str]:
+        """
+        Извлечь userlabel из данных задания
+
+        Args:
+            task: Данные задания
+
+        Returns:
+            userlabel или None если не найден
+        """
+        task_dict = self._parse_task_dict(task)
+        
+        possible_fields = ["userlabel", "user_label", "label"]
+        
+        for field in possible_fields:
+            if field in task_dict:
+                value = task_dict[field]
+                if value:
+                    return str(value)
+        
+        return None
 
     async def wait_for_completion(
         self,

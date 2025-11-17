@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     PARSER_MARKET_POLL_INTERVAL: int = 10  # Polling interval (seconds)
     PARSER_MARKET_MAX_RETRIES: int = 3
 
+    # Scheduler (Automatic Tasks)
+    ENABLE_SCHEDULER: bool = False  # Отключено по умолчанию для экономии расходов на API
+
     # Redis (optional)
     REDIS_URL: Optional[str] = None
     REDIS_PASSWORD: Optional[str] = None

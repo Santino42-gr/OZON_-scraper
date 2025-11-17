@@ -13,62 +13,64 @@ version: '3.8'
 
 services:
   # Cron Worker - запуск периодических задач
-  cron-worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: ozon-scraper-cron
-    restart: unless-stopped
-    
-    # Переопределяем command для cron режима
-    command: >
-      sh -c "
-        echo 'Installing cron...' &&
-        apk add --no-cache dcron &&
-        echo '0 9 * * * cd /app && python -m cron_jobs.price_updater >> /var/log/cron.log 2>&1' > /etc/crontabs/root &&
-        echo '0 15 * * * cd /app && python -m cron_jobs.price_updater >> /var/log/cron.log 2>&1' >> /etc/crontabs/root &&
-        echo 'Cron jobs configured:' &&
-        cat /etc/crontabs/root &&
-        echo 'Starting cron daemon...' &&
-        crond -f -l 2
-      "
-    
-    environment:
-      # Supabase
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      
-      # Telegram Bot Token для уведомлений
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      
-      # Parser Market API
-      - PARSER_MARKET_API_KEY=${PARSER_MARKET_API_KEY}
-      - PARSER_MARKET_REGION=${PARSER_MARKET_REGION:-ru}
-      
-      # Cron конфигурация
-      - OZON_SCRAPER_BATCH_SIZE=${OZON_SCRAPER_BATCH_SIZE:-10}
-      - OZON_SCRAPER_DELAY=${OZON_SCRAPER_DELAY:-5}
-    
-    volumes:
-      - ./backend:/app
-      - cron-logs:/var/log
-    
-    networks:
-      - ozon-scraper-network
-    
-    # Health check
-    healthcheck:
-      test: ["CMD", "ps", "aux", "|", "grep", "crond"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+  # ОТКЛЮЧЕНО: Автоматические задачи мониторинга отключены для экономии расходов на API
+  # Для включения: раскомментируйте сервис ниже и перезапустите контейнеры
+  # cron-worker:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: ozon-scraper-cron
+  #   restart: unless-stopped
+  #   
+  #   # Переопределяем command для cron режима
+  #   command: >
+  #     sh -c "
+  #       echo 'Installing cron...' &&
+  #       apk add --no-cache dcron &&
+  #       echo '0 9 * * * cd /app && python -m cron_jobs.price_updater >> /var/log/cron.log 2>&1' > /etc/crontabs/root &&
+  #       echo '0 15 * * * cd /app && python -m cron_jobs.price_updater >> /var/log/cron.log 2>&1' >> /etc/crontabs/root &&
+  #       echo 'Cron jobs configured:' &&
+  #       cat /etc/crontabs/root &&
+  #       echo 'Starting cron daemon...' &&
+  #       crond -f -l 2
+  #     "
+  #   
+  #   environment:
+  #     # Supabase
+  #     - SUPABASE_URL=${SUPABASE_URL}
+  #     - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+  #     
+  #     # Telegram Bot Token для уведомлений
+  #     - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+  #     
+  #     # Parser Market API
+  #     - PARSER_MARKET_API_KEY=${PARSER_MARKET_API_KEY}
+  #     - PARSER_MARKET_REGION=${PARSER_MARKET_REGION:-ru}
+  #     
+  #     # Cron конфигурация
+  #     - OZON_SCRAPER_BATCH_SIZE=${OZON_SCRAPER_BATCH_SIZE:-10}
+  #     - OZON_SCRAPER_DELAY=${OZON_SCRAPER_DELAY:-5}
+  #   
+  #   volumes:
+  #     - ./backend:/app
+  #     - cron-logs:/var/log
+  #   
+  #   networks:
+  #     - ozon-scraper-network
+  #   
+  #   # Health check
+  #   healthcheck:
+  #     test: ["CMD", "ps", "aux", "|", "grep", "crond"]
+  #     interval: 60s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 10s
+  #   
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
 
 volumes:
   cron-logs:
