@@ -99,13 +99,17 @@ async def startup_event():
     # Запуск планировщика задач (ОТКЛЮЧЕНО для экономии расходов на API)
     # Автоматические задачи мониторинга отключены по запросу клиента
     # Для включения: установите ENABLE_SCHEDULER=true в переменных окружения
-    from config import settings
-    if settings.ENABLE_SCHEDULER:
-        from services.scheduler import start_scheduler
-        start_scheduler()
-        logger.info("✅ Scheduler enabled and started")
-    else:
-        logger.info("⚠️  Scheduler disabled (ENABLE_SCHEDULER=false). Automatic monitoring tasks are OFF.")
+    try:
+        enable_scheduler = getattr(settings, 'ENABLE_SCHEDULER', False)
+        if enable_scheduler:
+            from services.scheduler import start_scheduler
+            start_scheduler()
+            logger.info("✅ Scheduler enabled and started")
+        else:
+            logger.info("⚠️  Scheduler disabled (ENABLE_SCHEDULER=false). Automatic monitoring tasks are OFF.")
+    except Exception as e:
+        logger.warning(f"⚠️  Could not check scheduler status: {e}. Scheduler will be disabled.")
+        logger.info("⚠️  Scheduler disabled. Automatic monitoring tasks are OFF.")
 
     logger.info("📚 API Documentation available at: /docs")
     logger.info("🔄 ReDoc available at: /redoc")
@@ -117,10 +121,13 @@ async def shutdown_event():
     logger.info("🛑 Shutting down OZON Bot Backend API...")
 
     # Остановка планировщика задач (если был запущен)
-    from config import settings
-    if settings.ENABLE_SCHEDULER:
-        from services.scheduler import stop_scheduler
-        stop_scheduler()
+    try:
+        enable_scheduler = getattr(settings, 'ENABLE_SCHEDULER', False)
+        if enable_scheduler:
+            from services.scheduler import stop_scheduler
+            stop_scheduler()
+    except Exception as e:
+        logger.warning(f"Could not stop scheduler: {e}")
 
 
 @app.get("/")

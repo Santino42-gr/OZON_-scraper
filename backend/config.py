@@ -50,7 +50,9 @@ class Settings(BaseSettings):
     PARSER_MARKET_MAX_RETRIES: int = 3
 
     # Scheduler (Automatic Tasks)
-    ENABLE_SCHEDULER: bool = False  # Отключено по умолчанию для экономии расходов на API
+    # Отключено по умолчанию для экономии расходов на API
+    # Pydantic-settings автоматически преобразует строки "true"/"false" в bool
+    ENABLE_SCHEDULER: bool = False
 
     # Redis (optional)
     REDIS_URL: Optional[str] = None
